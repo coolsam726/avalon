@@ -1,0 +1,23 @@
+"""Core framework service provider."""
+
+from __future__ import annotations
+
+from avalon.config import ConfigRepository, set_repository
+from avalon.providers.provider import ServiceProvider
+
+
+class FoundationServiceProvider(ServiceProvider):
+    """Binds core framework services into the container."""
+
+    def register(self) -> None:
+        from avalon.framework.application import Application
+        from avalon.framework.container import Container
+
+        app = self.app
+        app.container.instance(Application, app)
+        app.container.instance(Container, app.container)
+        app.container.instance(ConfigRepository, app.config)
+        app.container.singleton("config", lambda c: c.resolve(ConfigRepository))
+
+    def boot(self) -> None:
+        set_repository(self.app.config)
