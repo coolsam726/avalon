@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from avalon import __version__
 from avalon.config import config
+from avalon.http import Controller
 
 
-class WelcomeController:
+class WelcomeController(Controller):
     async def index(self) -> dict:
         return {
             "message": "Avalon progress tracker",

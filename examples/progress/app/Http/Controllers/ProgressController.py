@@ -28,13 +28,13 @@ def _milestones() -> list[dict]:
         {
             "id": "M2",
             "name": "HTTP + routing",
-            "status": "next",
-            "proof": ["Route DSL", "middleware", "Avalon HTTP kernel"],
+            "status": "complete",
+            "proof": ["Route DSL", "controllers via container", "middleware pipeline", "application.asgi"],
         },
         {
             "id": "M3",
             "name": "Validation + DX",
-            "status": "planned",
+            "status": "next",
             "proof": ["FormRequest", "python grail make:*"],
         },
         {

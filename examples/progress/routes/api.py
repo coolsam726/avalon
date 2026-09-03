@@ -1,3 +1,5 @@
-"""API routes — Avalon routing DSL arrives in M2."""
+"""API routes."""
 
-# Route.get("/api/health", ...)
+from avalon.routing import Route
+
+# Route.get("/api/health", [HealthController, "index"])

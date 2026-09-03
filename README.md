@@ -17,7 +17,7 @@ Laravel-inspired Python web framework with Adonis-class DX, built on FastAPI/Sta
 
 ## Status
 
-**M1 — Application kernel** complete. Living example: [`examples/progress`](examples/progress). Next: **M2 — HTTP + routing** (after M1 smoke gate).
+**M2 — HTTP + routing** complete. Living example: [`examples/progress`](examples/progress). Next: **M3 — Validation + DX**.
 
 ## Quick start (dev)
 

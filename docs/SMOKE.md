@@ -90,16 +90,45 @@ curl -s http://127.0.0.1:3000/
 
 ### M1 exit criteria
 
+- [x] `make smoke` green
+- [x] `make regression` green
+- [x] `make test-cov` green (coverage ≥ 95%)
+- [ ] Manual M1 checks once locally
+- [x] M2 routing unlocked after M1 merge
+
+---
+
+## M2 — HTTP + routing
+
+Automated: `tests/smoke/test_m2_smoke.py` + `tests/regression/test_m2_contracts.py` + `tests/test_m2_http.py`
+
+| ID | Check | Expected |
+| --- | --- | --- |
+| H1 | Scaffold `routes/web.py` | Uses `Route.get`; bootstrap has `application.asgi`, no `fastapi` import |
+| H2 | Scaffolded app `GET /` | 200 via Avalon router/controllers |
+| H3 | Groups + middleware | Prefix + alias middleware headers |
+| H4 | `HttpException` | JSON `{message, status}` |
+
+### Manual (once per M2 cut)
+
+```bash
+cd examples/progress
+python grail serve
+curl -s http://127.0.0.1:3000/
+curl -s http://127.0.0.1:3000/progress
+```
+
+### M2 exit criteria
+
 - [ ] `make smoke` green
 - [ ] `make regression` green
 - [ ] `make test-cov` green (coverage ≥ 95%)
-- [ ] Manual M1 checks once locally
-- [ ] No M2 routing work until this gate passes
+- [ ] Manual curls above once locally
+- [ ] No M3 work until this gate passes
 
 ---
 
 ## Out of scope until later milestones
 
-- Routing DSL / middleware (M2)
-- FormRequest (M3)
+- FormRequest / grail makeers (M3)
 - ORM, Caliburn, Auth (M4+)

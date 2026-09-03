@@ -82,7 +82,7 @@ def test_scaffold_kernel_files_contract(tmp_path: Path) -> None:
 
     bootstrap = (root / "bootstrap" / "app.py").read_text(encoding="utf-8")
     assert "Application(BASE_PATH).bootstrap()" in bootstrap
-    assert "from avalon.config import config" in bootstrap
+    assert "asgi = application.asgi" in bootstrap
 
     config_app = (root / "config" / "app.py").read_text(encoding="utf-8")
     assert "providers" in config_app

@@ -1,3 +1,8 @@
-"""Web routes — Avalon routing DSL arrives in M2."""
+"""Web routes."""
 
-# Route.get("/", [WelcomeController, "index"])
+from app.Http.Controllers.ProgressController import ProgressController
+from app.Http.Controllers.WelcomeController import WelcomeController
+from avalon.routing import Route
+
+Route.get("/", [WelcomeController, "index"])
+Route.get("/progress", [ProgressController, "index"])

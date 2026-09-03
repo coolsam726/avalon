@@ -2,7 +2,7 @@
 
 > **Status:** Binding. This document is the source of truth for architecture and milestones.
 > Change it deliberately (PR / explicit decision), not casually mid-implementation.
-> Last aligned: 2026-09-03 (M1 Application kernel complete).
+> Last aligned: 2026-09-03 (M2 HTTP + routing complete).
 
 ## Working identity
 
@@ -195,13 +195,15 @@ Bite-sized milestones. **No** queues, notifications, scheduler, mail, or seeders
 - Living example: [`examples/progress`](../examples/progress) (milestone board at `/progress`)
 - Smoke: [`docs/SMOKE.md`](SMOKE.md) M1 section + `tests/smoke/test_m1_smoke.py`
 
-### M2 — HTTP + routing
+### M2 — HTTP + routing — **complete**
 
 - Router DSL: `Route.get/post/...`, groups, prefixes, middleware aliases
-- Controllers (async); container-resolved
-- Middleware pipeline
-- Compile Avalon routes into FastAPI
-- Request/Response wrappers; consistent JSON error shape
+- Controllers resolved from the container; async actions
+- Middleware pipeline (`handle(request, next)`) with `config/http.py` aliases
+- `HttpKernel` compiles Avalon routes onto FastAPI (engine stays hidden)
+- `Request` / response helpers; `HttpException` JSON shape `{message, status, errors?}`
+- App bootstrap: `asgi = application.asgi` — **no FastAPI imports in app code**
+- Smoke/regression: `tests/smoke/test_m2_smoke.py`, `tests/regression/test_m2_contracts.py`
 
 ### M3 — Validation + DX
 
@@ -250,4 +252,4 @@ Bite-sized milestones. **No** queues, notifications, scheduler, mail, or seeders
 
 ## Next implementation focus
 
-**M2 only** — HTTP + routing (`avalon.http` + `avalon.routing`). M0 and M1 are closed.
+**M3 only** — Validation + DX (`FormRequest`, exception polish, `python grail make:*`). M0–M2 are closed.
