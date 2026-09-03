@@ -40,7 +40,7 @@ packages = ["src/avalon"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 # Coverage is opt-in so `pytest tests/smoke` stays a clean gate.
 # Full suite with coverage: `pytest -q --cov=avalon --cov-report=term-missing --cov-report=xml`
 # (fail_under=95 comes from [tool.coverage.report])
