@@ -1,0 +1,32 @@
+from avalon import __version__
+from avalon.framework import Application, Container
+
+
+def test_version() -> None:
+    assert __version__ == "0.1.0"
+
+
+def test_container_bind_and_resolve() -> None:
+    container = Container()
+    container.bind(str, lambda c: "avalon")
+    assert container.resolve(str) == "avalon"
+
+
+def test_container_singleton() -> None:
+    container = Container()
+    counter = {"n": 0}
+
+    def factory(_c: Container) -> dict:
+        counter["n"] += 1
+        return counter
+
+    container.singleton("counter", factory)
+    assert container.resolve("counter") is container.resolve("counter")
+    assert counter["n"] == 1
+
+
+def test_application_boot_stub() -> None:
+    app = Application(base_path=".")
+    assert app.is_booted is False
+    app.boot()
+    assert app.is_booted is True
