@@ -2,7 +2,7 @@
 
 > **Status:** Binding. This document is the source of truth for architecture and milestones.
 > Change it deliberately (PR / explicit decision), not casually mid-implementation.
-> Last aligned: 2026-09-03 (M2 complete; production / subpath / security roadmap locked).
+> Last aligned: 2026-09-03 (M2 Request/controller capture parity complete; exhaust = full parity).
 
 ## Working identity
 
@@ -172,6 +172,8 @@ Logic belongs in controllers, view models, and composers. `@python` is an escape
 
 Bite-sized milestones. **No** queues, notifications, scheduler, mail, or seeders until the core path is boring and tested. Seeders follow ORM maturity. Caliburn is its own track after the core gate.
 
+**Exhaust means full parity within the milestone’s declared scope.** Do not ship thin placeholders that claim a feature is done. Iterate inside the milestone (API + tests + living example) until the Laravel/Adonis-class DX for that slice is real, then move on. “Optional if light” / partial façades are not an exit criteria.
+
 ## Decision: Production serving (ASGI)
 
 Avalon apps are **plain ASGI**. There is no proprietary production server.
@@ -203,7 +205,7 @@ Laravel’s common failure mode — apps under `/apps/foo` with broken absolute 
 3. **Trusted proxies** (`X-Forwarded-Proto` / `Host` / `Prefix` as configured) so generated URLs match the public edge
 4. **Caliburn asset helpers** (M5) must be prefix-aware from day one — never bake root-absolute asset paths that ignore `APP_BASE_PATH`
 
-**Milestone homes:** design locked here; thin URL helpers when redirects/links first appear (late M3 or immediate follow-up); full mount + asset proof with Caliburn (M5). Do not ship Caliburn assets without subpath tests.
+**Milestone homes:** design locked here; implement URL helpers with full `APP_URL` / `APP_BASE_PATH` behavior when redirects/links first appear (still before Caliburn assets); full mount + asset proof with Caliburn (M5). Do not ship Caliburn assets without subpath tests.
 
 ## Decision: Router DX beyond core verbs
 
@@ -239,6 +241,26 @@ M2 shipped the middleware **pipeline** only — empty default stack. Security is
 - Default **web** middleware should be secure-by-default once the web stack exists; API scaffolds may omit CSRF
 - Exhaust one milestone at a time — do not fold this whole table into M3
 
+## Decision: Request capture (Laravel parity)
+
+`avalon.http.Request` is the app-facing request type. Controllers must not need Starlette/FastAPI request types.
+
+| Concern | Contract |
+| --- | --- |
+| Hydration | Kernel builds `Request` via `await Request.create(...)` once per request (query + JSON/form body + files) |
+| `all()` / `input()` | Query **merged with** body; **body wins**; route params are **not** included |
+| `query()` / `post()` / `json()` | Query-only, body-only, parsed JSON |
+| `route()` | Path parameters |
+| Selection | `only()`, `except_()` (Laravel `except`), `keys()`, `has`, `has_any`, `filled`, `missing` |
+| Coercion | `boolean()`, `integer()`, `float()`, `string()` |
+| Mutation | `merge()`, `replace()` (middleware-friendly) |
+| Files | `UploadedFile`, `file()`, `files()`, `has_file()` |
+| Meta | `method`, `path`, `url`, `headers`, `cookies`, `header()`, `cookie()`, `bearer_token()`, `ip()`, `user_agent()`, `is_method()`, `is_json()` |
+| Controller injection | `Request` by type/name; route params by name; other type hints via container `make()` |
+| Validation | **`FormRequest` (M3)** — not ad-hoc `$request->validate()` on the base Request for M2 exit |
+
+**M2 is closed** when this table is implemented, tested, and exercised in `examples/progress` (done).
+
 ## Milestones
 
 ### M0 — Skeleton — **complete**
@@ -268,18 +290,20 @@ M2 shipped the middleware **pipeline** only — empty default stack. Security is
 - Controllers resolved from the container; async actions
 - Middleware pipeline (`handle(request, next)`) with `config/http.py` aliases
 - `HttpKernel` compiles Avalon routes onto FastAPI (engine stays hidden)
-- `Request` / response helpers; `HttpException` JSON shape `{message, status, errors?}`
+- **`Request` Laravel-parity input bag + controller capture** (see Decision above)
+- `HttpException` JSON shape `{message, status, errors?}`
 - App bootstrap: `asgi = application.asgi` — **no FastAPI imports in app code**
 - Smoke/regression: `tests/smoke/test_m2_smoke.py`, `tests/regression/test_m2_contracts.py`
-- **Out of scope for M2 (locked above):** production workers UX, `APP_BASE_PATH`, CSRF/CSP packs, `resource`/`view` routes
+- Living example: `/demo/*` exhausts verbs, middleware, Request bag, container DI
+- **Out of scope for M2:** production workers UX, `APP_BASE_PATH` mount, CSRF/CSP packs, `resource`/`view` routes, FormRequest
 
 ### M3 — Validation + DX
 
 - `FormRequest` (Pydantic) with Laravel-ish failure messages
-- Exception handler / HTTP exceptions
+- Exception handler polish as needed for validation failures
 - `python grail make:controller`, `make:middleware`, `make:provider`, `make:request`
 - Example API app proving the loop
-- Optional if light: thin `url()` / redirect helpers that read `APP_URL` + `APP_BASE_PATH` (full subpath proof still M5)
+- URL helpers with full `APP_URL` + `APP_BASE_PATH` behavior when redirects/links appear (mount/asset proof still M5)
 
 **Gate:** Example boots, routes, injects, validates, responds — no FastAPI imports in app code.
 
@@ -327,6 +351,6 @@ M2 shipped the middleware **pipeline** only — empty default stack. Security is
 
 ## Next implementation focus
 
-**M3 only** — Validation + DX (`FormRequest`, exception polish, `python grail make:*`). M0–M2 are closed.
+**M3 only** — Validation + DX (`FormRequest`, `python grail make:*`, validation failure shape). M0–M2 are closed under the exhaust/full-parity rule.
 
-Do **not** pull full subpath mounting, CSRF, or CSP into M3. Honor the decision sections above; implement each concern in its milestone home.
+Do **not** pull full subpath mounting, CSRF, or CSP into M3 beyond what their decisions allow.

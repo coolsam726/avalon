@@ -18,6 +18,8 @@ class WelcomeController(Controller):
                 "progress": "/progress",
                 "demo_ping": "/demo/ping",
                 "demo_item": "/demo/items/42?q=hello",
+                "demo_bag": "/demo/bag",
+                "demo_di": "/demo/di",
                 "api_health": "/api/health",
                 "demo_boom": "/demo/boom",
                 "plan": "docs/PLAN.md (framework repo)",

@@ -108,6 +108,8 @@ Automated: `tests/smoke/test_m2_smoke.py` + `tests/regression/test_m2_contracts.
 | H2 | Scaffolded app `GET /` | 200 via Avalon router/controllers |
 | H3 | Groups + middleware | Prefix + alias middleware headers |
 | H4 | `HttpException` | JSON `{message, status}` |
+| H5 | `Request` bag | `all`/`input`/`query`/`post`/`only`/`except_`/`route`; body wins over query |
+| H6 | Controller capture | `Request` + route params + container type hints |
 
 ### Manual (once per M2 cut)
 
@@ -119,6 +121,8 @@ curl -s "$BASE/" | python -m json.tool
 curl -s "$BASE/progress" | python -m json.tool
 curl -si "$BASE/demo/ping" | head -n 20          # X-Avalon-Demo: m2
 curl -s "$BASE/demo/items/42?q=hello" -H "Authorization: Bearer secret"
+curl -s -X POST "$BASE/demo/bag?q=1" -H "Content-Type: application/json" -d '{"name":"bag","q":"body"}'
+curl -s "$BASE/demo/di"
 curl -s -X POST "$BASE/demo/items" -H "Content-Type: application/json" -d '{"name":"avalon"}'
 curl -s -X POST "$BASE/demo/items" -H "Content-Type: application/json" -d '{}'   # 422
 curl -s "$BASE/demo/boom"                        # 418 JSON {message,status}

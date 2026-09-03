@@ -32,8 +32,9 @@ def _milestones() -> list[dict]:
             "status": "complete",
             "proof": [
                 "Route DSL + groups/prefix",
-                "controllers via container",
+                "controllers via container DI",
                 "middleware aliases (demo.tag)",
+                "Request all/input/query/post/only/except_/files",
                 "HttpException JSON",
                 "application.asgi",
                 "GET /demo/* and /api/*",
@@ -80,6 +81,8 @@ class ProgressController(Controller):
             "m2_demo": {
                 "ping": "/demo/ping",
                 "item": "/demo/items/{item}",
+                "bag": "/demo/bag",
+                "di": "/demo/di",
                 "api_health": "/api/health",
                 "exception": "/demo/boom",
             },

@@ -158,11 +158,10 @@ def test_request_json_and_form(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     set_router(app.router)
 
     async def echo_json(request: Request) -> dict[str, object]:
-        return {"json": await request.json()}
+        return {"json": request.json()}
 
     async def echo_form(request: Request) -> dict[str, object]:
-        form = await request.form()
-        return {"name": form.get("name")}
+        return {"name": request.post("name")}
 
     Route.post("/json", echo_json)
     Route.post("/form", echo_form)

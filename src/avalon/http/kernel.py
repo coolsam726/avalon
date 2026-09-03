@@ -21,6 +21,20 @@ from avalon.routing.router import Action, RouteDefinition, Router
 if TYPE_CHECKING:
     from avalon.framework.application import Application
 
+_SKIP_INJECT_TYPES = {
+    str,
+    int,
+    float,
+    bool,
+    bytes,
+    dict,
+    list,
+    tuple,
+    set,
+    type(None),
+    Any,
+}
+
 
 class HttpKernel:
     """Builds the ASGI app from Avalon routes, middleware, and controllers."""
@@ -77,7 +91,7 @@ class HttpKernel:
         route: RouteDefinition,
     ) -> Callable[..., Awaitable[StarletteResponse]]:
         async def endpoint(request: FastAPIRequest) -> StarletteResponse:
-            avalon_request = Request(request)
+            avalon_request = await Request.create(request)
             handler = self._resolve_action(route.action)
 
             async def call_controller(req: Request) -> StarletteResponse:
@@ -167,11 +181,25 @@ class HttpKernel:
 
         kwargs: dict[str, Any] = {}
         for name, param in signature.parameters.items():
+            if name == "self":
+                continue
             annotation = hints.get(name, param.annotation)
             if annotation is Request or name in {"request", "req"}:
                 kwargs[name] = request
             elif name in request.path_params:
                 kwargs[name] = request.path_params[name]
+            elif (
+                annotation is not inspect.Parameter.empty
+                and isinstance(annotation, type)
+                and annotation not in _SKIP_INJECT_TYPES
+            ):
+                kwargs[name] = self.app.make(annotation)
+            elif param.default is not inspect.Parameter.empty:
+                continue
+            else:
+                raise TypeError(
+                    f"Cannot resolve controller parameter {name!r} for {handler!r}"
+                )
 
         result = handler(**kwargs) if kwargs else handler()
         if inspect.isawaitable(result):

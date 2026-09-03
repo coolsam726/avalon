@@ -13,7 +13,7 @@ from avalon.http.exceptions import (
 )
 from avalon.http.kernel import HttpKernel
 from avalon.http.middleware import Middleware
-from avalon.http.request import Request
+from avalon.http.request import Request, UploadedFile
 from avalon.http.response import json, make_response
 
 __all__ = [
@@ -29,6 +29,7 @@ __all__ = [
     "TooManyRequestsHttpException",
     "UnauthorizedHttpException",
     "UnprocessableEntityHttpException",
+    "UploadedFile",
     "json",
     "make_response",
 ]

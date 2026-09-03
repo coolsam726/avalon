@@ -30,11 +30,19 @@ curl -s "$BASE/progress" | python -m json.tool
 # Group prefix + middleware header (expect X-Avalon-Demo: m2)
 curl -si "$BASE/demo/ping" | head -n 20
 
-# Path params, query, bearer
+# Path params, query, bearer, only()
 curl -s "$BASE/demo/items/42?q=hello" -H "Authorization: Bearer secret" | python -m json.tool
 
+# Request bag (all/query/post — body wins on key clashes)
+curl -s -X POST "$BASE/demo/bag?q=1" -H "Content-Type: application/json" \
+  -d '{"name":"bag","q":"body"}' | python -m json.tool
+
+# Container DI into controller action
+curl -s "$BASE/demo/di" | python -m json.tool
+
 # Verbs
-curl -s -X POST "$BASE/demo/items" -H "Content-Type: application/json" -d '{"name":"avalon"}' | python -m json.tool
+curl -s -X POST "$BASE/demo/items" -H "Content-Type: application/json" \
+  -d '{"name":"avalon","flag":true,"count":2}' | python -m json.tool
 curl -s -X PUT "$BASE/demo/items/42" | python -m json.tool
 curl -s -X PATCH "$BASE/demo/items/42" | python -m json.tool
 curl -s -X DELETE "$BASE/demo/items/42" | python -m json.tool
@@ -58,11 +66,11 @@ curl -s "$BASE/api/echo/7?q=api" | python -m json.tool
 | --- | --- |
 | **M0** | App created with `avalon new`, `python grail serve`, layout |
 | **M1** | `Application.bootstrap()`, `config()`, providers, `.env` |
-| **M2** | `Route` DSL, groups/prefix, middleware alias, verbs, `HttpException`, `application.asgi` — see `/demo/*` and `/api/*` |
+| **M2** | Route DSL, middleware, verbs, **Request bag** (`all`/`query`/`post`/`only`/`except_`), container DI, `HttpException` — `/demo/*`, `/api/*` |
 
 ## Growing with Avalon
 
-M2 is live: routes in `routes/web.py` + `routes/api.py`, middleware alias `demo.tag` in `config/http.py`, bootstrap only exposes `application.asgi` (no FastAPI imports). When M3 lands, add FormRequests and `python grail make:*` generators.
+M2 Request parity is live: routes in `routes/web.py` + `routes/api.py`, middleware alias `demo.tag`, Laravel-style `Request` helpers, bootstrap only exposes `application.asgi` (no FastAPI imports). FormRequest + `python grail make:*` wait for M3.
 
 ## CLI
 

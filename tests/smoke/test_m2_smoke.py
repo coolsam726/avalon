@@ -86,12 +86,30 @@ def test_m2_s3_progress_example_exhausts_http_surface(
         show = client.get("/demo/items/42?q=hello", headers={"Authorization": "Bearer secret"})
         assert show.status_code == 200
         assert show.json()["item"] == "42"
+        assert show.json()["route"] == "42"
         assert show.json()["query"] == "hello"
         assert show.json()["bearer"] == "secret"
+        assert show.json()["only_q"] == {"q": "hello"}
 
-        created = client.post("/demo/items", json={"name": "avalon"})
+        created = client.post("/demo/items", json={"name": "avalon", "flag": True, "count": 2})
         assert created.status_code == 200
-        assert created.json() == {"created": True, "name": "avalon"}
+        assert created.json()["created"] is True
+        assert created.json()["name"] == "avalon"
+        assert created.json()["boolean_flag"] is True
+        assert created.json()["integer_count"] == 2
+
+        bag = client.post("/demo/bag?q=1", json={"name": "bag", "q": "body"})
+        assert bag.status_code == 200
+        assert bag.json()["all"]["q"] == "body"
+        assert bag.json()["query"]["q"] == "1"
+        assert bag.json()["post"]["name"] == "bag"
+        assert bag.json()["has_name"] is True
+        assert bag.json()["is_json"] is True
+
+        di = client.get("/demo/di")
+        assert di.status_code == 200
+        assert di.json()["injected"] == "ConfigRepository"
+        assert di.json()["app_name"]
 
         assert client.put("/demo/items/7").json() == {"updated": "7"}
         assert client.patch("/demo/items/7").json() == {"patched": "7"}

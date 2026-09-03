@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from avalon.http import Controller, HttpKernel, Middleware, Request
+from avalon.http import Controller, HttpKernel, Middleware, Request, UploadedFile
 from avalon.installer.scaffold import scaffold_app
 from avalon.routing import Route, Router
 
@@ -18,9 +18,14 @@ def test_m2_public_exports() -> None:
     assert Controller is not None
     assert Middleware is not None
     assert Request is not None
+    assert UploadedFile is not None
     assert HttpKernel is not None
     assert Route is not None
     assert Router is not None
+    assert hasattr(Request, "all")
+    assert hasattr(Request, "only")
+    assert hasattr(Request, "except_")
+    assert hasattr(Request, "create")
 
 
 def test_scaffold_m2_bootstrap_has_no_fastapi(tmp_path: Path) -> None:
