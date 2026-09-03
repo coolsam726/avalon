@@ -111,11 +111,18 @@ Automated: `tests/smoke/test_m2_smoke.py` + `tests/regression/test_m2_contracts.
 
 ### Manual (once per M2 cut)
 
+From `examples/progress` after `python grail serve` (see that app’s README for the full checklist):
+
 ```bash
-cd examples/progress
-python grail serve
-curl -s http://127.0.0.1:3000/
-curl -s http://127.0.0.1:3000/progress
+BASE=http://127.0.0.1:3000
+curl -s "$BASE/" | python -m json.tool
+curl -s "$BASE/progress" | python -m json.tool
+curl -si "$BASE/demo/ping" | head -n 20          # X-Avalon-Demo: m2
+curl -s "$BASE/demo/items/42?q=hello" -H "Authorization: Bearer secret"
+curl -s -X POST "$BASE/demo/items" -H "Content-Type: application/json" -d '{"name":"avalon"}'
+curl -s -X POST "$BASE/demo/items" -H "Content-Type: application/json" -d '{}'   # 422
+curl -s "$BASE/demo/boom"                        # 418 JSON {message,status}
+curl -s "$BASE/api/health"
 ```
 
 ### M2 exit criteria

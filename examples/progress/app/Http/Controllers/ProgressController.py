@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from avalon import __version__
 from avalon.config import config
+from avalon.http import Controller
 
 
 def _milestones() -> list[dict]:
@@ -29,7 +30,14 @@ def _milestones() -> list[dict]:
             "id": "M2",
             "name": "HTTP + routing",
             "status": "complete",
-            "proof": ["Route DSL", "controllers via container", "middleware pipeline", "application.asgi"],
+            "proof": [
+                "Route DSL + groups/prefix",
+                "controllers via container",
+                "middleware aliases (demo.tag)",
+                "HttpException JSON",
+                "application.asgi",
+                "GET /demo/* and /api/*",
+            ],
         },
         {
             "id": "M3",
@@ -58,7 +66,7 @@ def _milestones() -> list[dict]:
     ]
 
 
-class ProgressController:
+class ProgressController(Controller):
     async def index(self) -> dict:
         milestones = _milestones()
         complete = [m for m in milestones if m["status"] == "complete"]
@@ -69,4 +77,10 @@ class ProgressController:
             "completed": len(complete),
             "total": len(milestones),
             "milestones": milestones,
+            "m2_demo": {
+                "ping": "/demo/ping",
+                "item": "/demo/items/{item}",
+                "api_health": "/api/health",
+                "exception": "/demo/boom",
+            },
         }

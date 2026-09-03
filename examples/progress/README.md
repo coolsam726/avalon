@@ -16,14 +16,41 @@ pip install -e .                   # installs this app package
 python grail serve
 ```
 
-Then:
+Then open another terminal and run the M2 checklist below (use the port `grail serve` prints if not 3000).
+
+## M2 manual checklist
 
 ```bash
-curl -s http://127.0.0.1:3000/ | python -m json.tool
-curl -s http://127.0.0.1:3000/progress | python -m json.tool
-```
+BASE=http://127.0.0.1:3000
 
-(`python grail serve` defaults to **3000** and walks **3001–3099** if busy.)
+# Board + welcome
+curl -s "$BASE/" | python -m json.tool
+curl -s "$BASE/progress" | python -m json.tool
+
+# Group prefix + middleware header (expect X-Avalon-Demo: m2)
+curl -si "$BASE/demo/ping" | head -n 20
+
+# Path params, query, bearer
+curl -s "$BASE/demo/items/42?q=hello" -H "Authorization: Bearer secret" | python -m json.tool
+
+# Verbs
+curl -s -X POST "$BASE/demo/items" -H "Content-Type: application/json" -d '{"name":"avalon"}' | python -m json.tool
+curl -s -X PUT "$BASE/demo/items/42" | python -m json.tool
+curl -s -X PATCH "$BASE/demo/items/42" | python -m json.tool
+curl -s -X DELETE "$BASE/demo/items/42" | python -m json.tool
+curl -s -X OPTIONS "$BASE/demo/probe" | python -m json.tool
+
+# Validation-shaped HttpException (422)
+curl -s -X POST "$BASE/demo/items" -H "Content-Type: application/json" -d '{}' | python -m json.tool
+
+# HttpException JSON shape
+curl -s "$BASE/demo/boom" | python -m json.tool
+curl -s "$BASE/demo/missing" | python -m json.tool
+
+# Second routes file (routes/api.py) + match()
+curl -si "$BASE/api/health" | head -n 20
+curl -s "$BASE/api/echo/7?q=api" | python -m json.tool
+```
 
 ## What this proves today
 
@@ -31,11 +58,11 @@ curl -s http://127.0.0.1:3000/progress | python -m json.tool
 | --- | --- |
 | **M0** | App created with `avalon new`, `python grail serve`, layout |
 | **M1** | `Application.bootstrap()`, `config()`, providers, `.env` |
-| **M2+** | Listed as `next` / `planned` on `GET /progress` |
+| **M2** | `Route` DSL, groups/prefix, middleware alias, verbs, `HttpException`, `application.asgi` — see `/demo/*` and `/api/*` |
 
 ## Growing with Avalon
 
-M2 is live: routes live in `routes/web.py` via `Route.get(...)`, and `bootstrap/app.py` only exposes `application.asgi` (no FastAPI imports). When M3 lands, add FormRequests and `python grail make:*` generators.
+M2 is live: routes in `routes/web.py` + `routes/api.py`, middleware alias `demo.tag` in `config/http.py`, bootstrap only exposes `application.asgi` (no FastAPI imports). When M3 lands, add FormRequests and `python grail make:*` generators.
 
 ## CLI
 
