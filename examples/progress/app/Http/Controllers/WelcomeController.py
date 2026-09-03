@@ -16,6 +16,10 @@ class WelcomeController(Controller):
             "env": str(config("app.env", "local")),
             "links": {
                 "progress": "/progress",
+                "demo_ping": "/demo/ping",
+                "demo_item": "/demo/items/42?q=hello",
+                "api_health": "/api/health",
+                "demo_boom": "/demo/boom",
                 "plan": "docs/PLAN.md (framework repo)",
                 "smoke": "docs/SMOKE.md (framework repo)",
             },
