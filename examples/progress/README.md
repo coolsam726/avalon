@@ -35,7 +35,7 @@ curl -s http://127.0.0.1:3000/progress | python -m json.tool
 
 ## Growing with Avalon
 
-When M2 lands, replace the FastAPI route wiring in `bootstrap/app.py` with Avalon `Route` definitions in `routes/`. Keep `/progress` as the milestone board.
+M2 is live: routes live in `routes/web.py` via `Route.get(...)`, and `bootstrap/app.py` only exposes `application.asgi` (no FastAPI imports). When M3 lands, add FormRequests and `python grail make:*` generators.
 
 ## CLI
 

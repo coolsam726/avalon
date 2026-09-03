@@ -12,11 +12,15 @@ class FoundationServiceProvider(ServiceProvider):
     def register(self) -> None:
         from avalon.framework.application import Application
         from avalon.framework.container import Container
+        from avalon.http.kernel import HttpKernel
+        from avalon.routing.router import Router
 
         app = self.app
         app.container.instance(Application, app)
         app.container.instance(Container, app.container)
         app.container.instance(ConfigRepository, app.config)
+        app.container.instance(Router, app.router)
+        app.container.instance(HttpKernel, app.http_kernel)
         app.container.singleton("config", lambda c: c.resolve(ConfigRepository))
 
     def boot(self) -> None:

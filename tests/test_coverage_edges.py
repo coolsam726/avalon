@@ -13,12 +13,13 @@ from avalon.providers import ServiceProvider
 
 
 def test_stub_packages_importable() -> None:
-    assert avalon.http.__all__ == []
-    assert avalon.routing.__all__ == []
+    assert avalon.routing.__all__
     assert avalon.validation.__all__ == []
     assert avalon.orm.__all__ == []
     assert avalon.auth.__all__ == []
     assert avalon.caliburn.__all__ == []
+    assert "Controller" in avalon.http.__all__
+    assert "Route" in avalon.routing.__all__
 
 
 def test_container_instance_edge() -> None:

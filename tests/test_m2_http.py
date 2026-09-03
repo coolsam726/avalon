@@ -1,0 +1,177 @@
+"""M2 HTTP + routing unit tests."""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+
+from avalon.framework import Application
+from avalon.http import (
+    BadRequestHttpException,
+    HttpException,
+    NotFoundHttpException,
+    Request,
+    json,
+    make_response,
+)
+from avalon.http.exceptions import UnauthorizedHttpException
+from avalon.routing import Route, Router, set_router
+from tests.support import purge_generated_app_modules
+
+
+def _make_app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Application:
+    purge_generated_app_modules()
+    (tmp_path / ".env").write_text("APP_NAME=HttpApp\nAPP_DEBUG=true\n", encoding="utf-8")
+
+    app_pkg = tmp_path / "app"
+    (app_pkg / "Http" / "Controllers").mkdir(parents=True)
+    (app_pkg / "Http" / "Middleware").mkdir(parents=True)
+    for relative in (
+        "__init__.py",
+        "Http/__init__.py",
+        "Http/Controllers/__init__.py",
+        "Http/Middleware/__init__.py",
+    ):
+        (app_pkg / relative).write_text("", encoding="utf-8")
+
+    (app_pkg / "Http" / "Controllers" / "PingController.py").write_text(
+        "from avalon.http import Controller, NotFoundHttpException, Request\n"
+        "\n"
+        "class PingController(Controller):\n"
+        "    async def index(self):\n"
+        "        return {'pong': 'ok'}\n"
+        "\n"
+        "    async def show(self, request: Request, id: str):\n"
+        "        return {'id': id, 'path': request.path}\n"
+        "\n"
+        "    async def boom(self):\n"
+        "        raise NotFoundHttpException('Missing resource')\n",
+        encoding="utf-8",
+    )
+    (app_pkg / "Http" / "Middleware" / "TagMiddleware.py").write_text(
+        "from avalon.http import Middleware, Request\n"
+        "\n"
+        "class TagMiddleware(Middleware):\n"
+        "    async def handle(self, request: Request, call_next):\n"
+        "        response = await call_next(request)\n"
+        "        response.headers['X-Tagged'] = '1'\n"
+        "        return response\n",
+        encoding="utf-8",
+    )
+
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    (config_dir / "app.py").write_text(
+        'config = {"name": "HttpApp", "debug": True, "providers": []}\n',
+        encoding="utf-8",
+    )
+    (config_dir / "http.py").write_text(
+        "config = {\n"
+        "    'middleware': [],\n"
+        "    'middleware_aliases': {\n"
+        "        'tag': 'app.Http.Middleware.TagMiddleware.TagMiddleware',\n"
+        "    },\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    routes = tmp_path / "routes"
+    routes.mkdir()
+    (routes / "web.py").write_text(
+        "from app.Http.Controllers.PingController import PingController\n"
+        "from avalon.routing import Route\n"
+        "\n"
+        "Route.get('/', [PingController, 'index'])\n"
+        "Route.get('/items/{id}', [PingController, 'show'])\n"
+        "Route.get('/missing', [PingController, 'boom'])\n"
+        "\n"
+        "with Route.group(prefix='/api', middleware=['tag']):\n"
+        "    Route.get('/ping', [PingController, 'index'])\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.chdir(tmp_path)
+    sys.path.insert(0, str(tmp_path))
+    monkeypatch.delenv("APP_NAME", raising=False)
+    try:
+        return Application(tmp_path).bootstrap()
+    finally:
+        pass
+
+
+def test_route_dsl_groups_and_compile(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    try:
+        app = _make_app(tmp_path, monkeypatch)
+        routes = {route.uri: route for route in app.router.routes}
+        assert "/" in routes
+        assert "/api/ping" in routes
+        assert routes["/api/ping"].middleware == ["tag"]
+
+        client = TestClient(app.asgi)
+        assert client.get("/").json() == {"pong": "ok"}
+        assert client.get("/items/42").json() == {"id": "42", "path": "/items/42"}
+
+        tagged = client.get("/api/ping")
+        assert tagged.json() == {"pong": "ok"}
+        assert tagged.headers.get("x-tagged") == "1"
+    finally:
+        purge_generated_app_modules()
+        if str(tmp_path) in sys.path:
+            sys.path.remove(str(tmp_path))
+
+
+def test_http_exception_json_shape(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    try:
+        app = _make_app(tmp_path, monkeypatch)
+        client = TestClient(app.asgi)
+        response = client.get("/missing")
+        assert response.status_code == 404
+        assert response.json() == {"message": "Missing resource", "status": 404}
+    finally:
+        purge_generated_app_modules()
+        if str(tmp_path) in sys.path:
+            sys.path.remove(str(tmp_path))
+
+
+def test_router_facade_requires_bootstrap() -> None:
+    set_router(None)
+    with pytest.raises(RuntimeError, match="Router is not set"):
+        Route.get("/", lambda: {"ok": True})
+
+
+def test_json_and_response_helpers() -> None:
+    response = json({"ok": True}, status=201)
+    assert response.status_code == 201
+    assert make_response(None).status_code == 204
+    assert make_response("hi").body == b"hi"
+    assert make_response({"a": 1}).media_type == "application/json"
+    assert make_response(b"xyz").body == b"xyz"
+
+
+def test_http_exception_payload() -> None:
+    exc = BadRequestHttpException("Nope", errors={"field": ["required"]})
+    assert exc.to_dict() == {
+        "message": "Nope",
+        "status": 400,
+        "errors": {"field": ["required"]},
+    }
+    assert UnauthorizedHttpException().status_code == 401
+    assert isinstance(NotFoundHttpException(), HttpException)
+
+
+def test_router_methods_and_groups() -> None:
+    router = Router()
+    set_router(router)
+    router.post("/a", lambda: None)
+    router.put("/b", lambda: None)
+    router.patch("/c", lambda: None)
+    router.delete("/d", lambda: None)
+    router.options("/e", lambda: None)
+    router.match(["GET", "POST"], "/f", lambda: None)
+    with router.group(prefix="v1", middleware=["auth"]):
+        router.get("items", lambda: None)
+    uris = {route.uri for route in router.routes}
+    assert "/v1/items" in uris
+    assert any(route.middleware == ["auth"] for route in router.routes if route.uri == "/v1/items")

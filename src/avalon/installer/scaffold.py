@@ -53,9 +53,10 @@ def scaffold_app(name: str, destination: Path | None = None) -> Path:
         "bootstrap/app.py": _bootstrap_app(display),
         "config/__init__.py": "",
         "config/app.py": _config_app(display),
+        "config/http.py": _config_http(),
         "routes/__init__.py": "",
-        "routes/api.py": _ROUTES_API,
-        "routes/web.py": _ROUTES_WEB,
+        "routes/api.py": _routes_api(),
+        "routes/web.py": _routes_web(),
         "resources/views/.gitkeep": "",
         "storage/framework/.gitkeep": "",
     }
@@ -99,16 +100,6 @@ storage/framework/views/
 dist/
 build/
 """
-
-_ROUTES_API = '''"""API routes — Avalon routing DSL arrives in M2."""
-
-# Route.get("/api/health", ...)
-'''
-
-_ROUTES_WEB = '''"""Web routes — Avalon routing DSL arrives in M2."""
-
-# Route.get("/", [WelcomeController, "index"])
-'''
 
 
 def _env_file(display: str) -> str:
@@ -159,32 +150,18 @@ packages = ["app", "bootstrap", "config", "routes"]
 
 
 def _bootstrap_app(display: str) -> str:
-    return f'''"""Application entry — boots the Avalon kernel and exposes ASGI.
-
-HTTP routing moves fully under Avalon in M2; until then FastAPI remains the ASGI surface.
-"""
+    return f'''"""Application entry — boots the Avalon kernel and exposes ASGI."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI
-
-from app.Http.Controllers.WelcomeController import WelcomeController
-from avalon.config import config
 from avalon.framework import Application
 
 BASE_PATH = Path(__file__).resolve().parent.parent
 
 application = Application(BASE_PATH).bootstrap()
-
-asgi = FastAPI(title=str(config("app.name", "{display}")))
-_controller = WelcomeController()
-
-
-@asgi.get("/")
-async def welcome() -> dict[str, str]:
-    return await _controller.index()
+asgi = application.asgi
 '''
 
 
@@ -202,6 +179,16 @@ config = {{
         "app.Providers.AppServiceProvider.AppServiceProvider",
     ],
 }}
+'''
+
+
+def _config_http() -> str:
+    return '''"""HTTP kernel configuration."""
+
+config = {
+    "middleware": [],
+    "middleware_aliases": {},
+}
 '''
 
 
@@ -223,18 +210,38 @@ class AppServiceProvider(ServiceProvider):
 
 
 def _welcome_controller() -> str:
-    return '''"""Welcome controller stub."""
+    return '''"""Welcome controller."""
 
 from __future__ import annotations
 
 from avalon.config import config
+from avalon.http import Controller
 
 
-class WelcomeController:
+class WelcomeController(Controller):
     async def index(self) -> dict[str, str]:
         return {
             "message": "Welcome to Avalon",
             "app": str(config("app.name", "Avalon")),
             "docs": "See docs/PLAN.md in the framework repository",
         }
+'''
+
+
+def _routes_web() -> str:
+    return '''"""Web routes."""
+
+from app.Http.Controllers.WelcomeController import WelcomeController
+from avalon.routing import Route
+
+Route.get("/", [WelcomeController, "index"])
+'''
+
+
+def _routes_api() -> str:
+    return '''"""API routes."""
+
+from avalon.routing import Route
+
+# Route.get("/api/health", [HealthController, "index"])
 '''

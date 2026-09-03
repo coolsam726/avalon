@@ -2,7 +2,7 @@
 
 > **Status:** Binding. This document is the source of truth for architecture and milestones.
 > Change it deliberately (PR / explicit decision), not casually mid-implementation.
-> Last aligned: 2026-09-03 (M1 Application kernel complete).
+> Last aligned: 2026-09-03 (M2 complete; production / subpath / security roadmap locked).
 
 ## Working identity
 
@@ -172,6 +172,73 @@ Logic belongs in controllers, view models, and composers. `@python` is an escape
 
 Bite-sized milestones. **No** queues, notifications, scheduler, mail, or seeders until the core path is boring and tested. Seeders follow ORM maturity. Caliburn is its own track after the core gate.
 
+## Decision: Production serving (ASGI)
+
+Avalon apps are **plain ASGI**. There is no proprietary production server.
+
+| Environment | How |
+| --- | --- |
+| Local | `python grail serve` → Uvicorn on `bootstrap.app:asgi` (dev reload; port walk 3000–3099) |
+| Production | Uvicorn (or Gunicorn + Uvicorn workers / Hypercorn) on the same ASGI import path, behind a reverse proxy (Caddy / Nginx / Traefik) for TLS, compression, and optional static files |
+
+**Rules:**
+
+- App code never imports the process server; Grail/`uvicorn` are entrypoints only
+- Production docs show workers + proxy; optional later: `python grail serve --workers N` (not required for M3)
+- Static/asset CDN remains outside the Python process when possible; Avalon still generates correct public URLs (see subpath)
+
+## Decision: Subpath hosting (first-class)
+
+Laravel’s common failure mode — apps under `/apps/foo` with broken absolute `/…` assets and redirects — is **out of scope as a “proxy only” problem**. Avalon treats the public mount path as framework config.
+
+| Config | Role |
+| --- | --- |
+| `APP_URL` | Canonical public origin (scheme + host[+port]), e.g. `https://example.com` |
+| `APP_BASE_PATH` | Public path prefix, e.g. `/apps/foo` (empty or `/` = site root) |
+
+**Contract (binding):**
+
+1. **URL helpers** (`url()`, `route()`, `redirect()`, asset helpers) always honor `APP_BASE_PATH`
+2. **Router / ASGI** either compile routes under the prefix or mount the ASGI app at it — one mechanism, documented; no double-prefix bugs
+3. **Trusted proxies** (`X-Forwarded-Proto` / `Host` / `Prefix` as configured) so generated URLs match the public edge
+4. **Caliburn asset helpers** (M5) must be prefix-aware from day one — never bake root-absolute asset paths that ignore `APP_BASE_PATH`
+
+**Milestone homes:** design locked here; thin URL helpers when redirects/links first appear (late M3 or immediate follow-up); full mount + asset proof with Caliburn (M5). Do not ship Caliburn assets without subpath tests.
+
+## Decision: Router DX beyond core verbs
+
+**M2 delivered:** `get` / `post` / `put` / `patch` / `delete` / `options` / `any` / `match` + groups (prefix, middleware).
+
+**Deferred (do not reopen M2):**
+
+| Item | Home |
+| --- | --- |
+| `head`, `redirect` / `permanentRedirect`, `fallback`, named `route()` helper | Small DX pass after M3 (or end of M3 if `make:*` is light) |
+| `resource` / `apiResource` | When CRUD scaffolding needs them (post-M4 or with API starter) |
+| `view` routes | Caliburn (M5) |
+
+## Decision: Security roadmap
+
+M2 shipped the middleware **pipeline** only — empty default stack. Security is **not** implied by M2.
+
+| Concern | Approach | Milestone home |
+| --- | --- | --- |
+| Security headers (CSP baseline, `X-Frame-Options`, `Referrer-Policy`, etc.) | Default middleware pack; config knobs in `config/http.py` | After M3 / with web hardening — no session dependency |
+| CORS | Config + middleware for API apps | Same hardening pass |
+| CSRF | Token + session; Caliburn `@csrf` | With sessions (M6 or dedicated web-security slice immediately before/with M6) |
+| Cookie signing / encryption | Session / cookie stack | M6 |
+| XSS escaping | `{{ }}` escaped vs `{!! !!}` raw | Caliburn M5 |
+| CSP nonces | Tied to view rendering | Caliburn M5 ladder (framework directives) |
+| Trusted proxies | Request / URL generation | With subpath helpers |
+| Rate limiting | Optional middleware | Later |
+| `auth` / `guest` | Guards | M6 |
+
+**Rules:**
+
+- Do **not** ship CSRF theater without a real session store
+- Default **web** middleware should be secure-by-default once the web stack exists; API scaffolds may omit CSRF
+- Exhaust one milestone at a time — do not fold this whole table into M3
+
 ## Milestones
 
 ### M0 — Skeleton — **complete**
@@ -195,13 +262,16 @@ Bite-sized milestones. **No** queues, notifications, scheduler, mail, or seeders
 - Living example: [`examples/progress`](../examples/progress) (milestone board at `/progress`)
 - Smoke: [`docs/SMOKE.md`](SMOKE.md) M1 section + `tests/smoke/test_m1_smoke.py`
 
-### M2 — HTTP + routing
+### M2 — HTTP + routing — **complete**
 
 - Router DSL: `Route.get/post/...`, groups, prefixes, middleware aliases
-- Controllers (async); container-resolved
-- Middleware pipeline
-- Compile Avalon routes into FastAPI
-- Request/Response wrappers; consistent JSON error shape
+- Controllers resolved from the container; async actions
+- Middleware pipeline (`handle(request, next)`) with `config/http.py` aliases
+- `HttpKernel` compiles Avalon routes onto FastAPI (engine stays hidden)
+- `Request` / response helpers; `HttpException` JSON shape `{message, status, errors?}`
+- App bootstrap: `asgi = application.asgi` — **no FastAPI imports in app code**
+- Smoke/regression: `tests/smoke/test_m2_smoke.py`, `tests/regression/test_m2_contracts.py`
+- **Out of scope for M2 (locked above):** production workers UX, `APP_BASE_PATH`, CSRF/CSP packs, `resource`/`view` routes
 
 ### M3 — Validation + DX
 
@@ -209,6 +279,7 @@ Bite-sized milestones. **No** queues, notifications, scheduler, mail, or seeders
 - Exception handler / HTTP exceptions
 - `python grail make:controller`, `make:middleware`, `make:provider`, `make:request`
 - Example API app proving the loop
+- Optional if light: thin `url()` / redirect helpers that read `APP_URL` + `APP_BASE_PATH` (full subpath proof still M5)
 
 **Gate:** Example boots, routes, injects, validates, responds — no FastAPI imports in app code.
 
@@ -224,11 +295,14 @@ Bite-sized milestones. **No** queues, notifications, scheduler, mail, or seeders
 - MVP: `.cal.html`, layouts + echo + include, compile-to-Python + cache
 - Wire `view()` via provider; optional extra `avalon[caliburn]`
 - Benchmark suite from day one; continue parity ladder without blocking auth
+- **Subpath:** asset helpers + smoke that an app under `APP_BASE_PATH` serves correct asset/URLs
+- XSS defaults: escaped `{{ }}` vs raw `{!! !!}`
 
 ### M6 — `avalon.auth`
 
 - Session + token guards
 - Middleware `auth`, `guest`
+- CSRF (with sessions) + cookie signing; Caliburn `@csrf` / `@auth` / `@guest` as directives land
 
 ### Later (deferred)
 
@@ -237,6 +311,9 @@ Bite-sized milestones. **No** queues, notifications, scheduler, mail, or seeders
 - Policies/gates, broadcasting
 - Starter kits
 - Full Caliburn advanced parity (ongoing on M5 track)
+- Router DX sugar: `head`, `redirect`, `fallback`, `route()`, then `resource` / `apiResource`
+- Default security-headers + CORS middleware pack (post-M3 hardening; before or with M6 web stack)
+- Production docs / optional `grail serve --workers`
 
 ## Quality bar for “solid core”
 
@@ -250,4 +327,6 @@ Bite-sized milestones. **No** queues, notifications, scheduler, mail, or seeders
 
 ## Next implementation focus
 
-**M2 only** — HTTP + routing (`avalon.http` + `avalon.routing`). M0 and M1 are closed.
+**M3 only** — Validation + DX (`FormRequest`, exception polish, `python grail make:*`). M0–M2 are closed.
+
+Do **not** pull full subpath mounting, CSRF, or CSP into M3. Honor the decision sections above; implement each concern in its milestone home.
