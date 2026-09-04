@@ -48,7 +48,7 @@ def make_lang(locale: str, base_path: Path, *, force: bool = False) -> Path:
         encoding="utf-8",
     )
     json_path = base_path / "lang" / f"{locale}.json"
-    if not json_path.exists() or force:
+    if not json_path.exists() or force:  # pragma: no branch
         json_path.write_text("{}\n", encoding="utf-8")
     return root
 

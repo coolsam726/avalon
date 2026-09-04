@@ -129,7 +129,11 @@ def test_http_exception_json_shape(tmp_path: Path, monkeypatch: pytest.MonkeyPat
         client = TestClient(app.asgi)
         response = client.get("/missing")
         assert response.status_code == 404
-        assert response.json() == {"message": "Missing resource", "status": 404}
+        assert response.json() == {
+            "message": "Missing resource",
+            "status": 404,
+            "errors": {},
+        }
     finally:
         purge_generated_app_modules()
         if str(tmp_path) in sys.path:

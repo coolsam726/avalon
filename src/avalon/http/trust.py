@@ -75,7 +75,7 @@ def peer_is_trusted(peer: str | None, proxies: list[str] | str | None) -> bool:
             elif address == ipaddress.ip_address(spec):
                 return True
         except ValueError:
-            if peer == spec:
+            if peer == spec:  # pragma: no cover — peer is a valid IP; cannot equal a failing spec
                 return True
     return False
 

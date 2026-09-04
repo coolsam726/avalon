@@ -75,6 +75,8 @@ class Request:
         self._cookies: dict[str, str] | None = None
         self._auth: Any = None
         self._csrf_token: str | None = None
+        self._route_polarity: str | None = None
+        self._route_name: str | None = None
 
     @classmethod
     async def create(cls, request: StarletteRequest) -> Request:
@@ -151,6 +153,23 @@ class Request:
     @property
     def path(self) -> str:
         return self._request.url.path
+
+    @property
+    def route_polarity(self) -> str | None:
+        """``web`` / ``api`` from the route group — used by the exception Handler."""
+        return self._route_polarity
+
+    @route_polarity.setter
+    def route_polarity(self, value: str | None) -> None:
+        self._route_polarity = value
+
+    @property
+    def route_name(self) -> str | None:
+        return self._route_name
+
+    @route_name.setter
+    def route_name(self, value: str | None) -> None:
+        self._route_name = value
 
     @property
     def headers(self) -> Any:

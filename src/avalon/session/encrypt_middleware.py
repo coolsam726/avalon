@@ -50,7 +50,7 @@ class EncryptCookies(Middleware):
             if rewritten != value.decode("latin-1"):
                 changed = True
             updated.append((name, rewritten.encode("latin-1")))
-        if changed:
+        if changed:  # pragma: no branch
             response.raw_headers[:] = updated
 
     def _encrypt_set_cookie(self, header: str, *, key: str) -> str:

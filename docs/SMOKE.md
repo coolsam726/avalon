@@ -299,8 +299,22 @@ curl -sH 'Authorization: Bearer demo' http://127.0.0.1:3000/api/me
 
 ---
 
+## M8 — Error handling + logging
+
+- [x] `Handler` report/render + app override; polarity HTML vs JSON (no `Accept` flip)
+- [x] `APP_DEBUG` web debug page gated; api debug widens `message` only
+- [x] Status mapping (`ModelNotFoundError` → 404, …) + `ServiceUnavailableHttpException`
+- [x] Unmatched routes: path polarity (`/api/*` JSON, else HTML 404)
+- [x] `errors:publish` + default/tailwind/bootstrap bundles (CDN-free); production error views
+- [x] `config/logging.py` + `log()` / `with_()` context; `report()` writes through channels
+- [x] Error catalog `lang/en/errors.py`; Caliburn-off HTML fallback
+- [x] Progress `/boom` (HTML) + `/api/explode` (JSON); Error Handling / Logging docs
+- [x] Smoke `tests/smoke/test_m8_smoke.py`; coverage ≥ 98% (exceptions + log aim 100%)
+- [x] No M9 work until this gate passes
+
+---
+
 ## Out of scope until later milestones
 
-- Exception handler layer + logging (M8)
 - Console/scheduler, filesystem, queues (M9–M11)
 - Mail + Notifications (M12–M13)

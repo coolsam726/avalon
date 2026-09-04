@@ -77,31 +77,42 @@ def _milestones() -> list[dict]:
         {
             "id": "M6",
             "name": "Caliburn",
-            "status": "next",
+            "status": "complete",
             "proof": [
                 ".cal.html layouts + @foreach",
                 "components / slots / @props",
                 "@push / @stack / @parent",
-                "view()",
+                "view() + @csrf / @auth / @guest",
             ],
         },
         {
             "id": "M7",
             "name": "Auth",
-            "status": "planned",
-            "proof": ["session/token guards", "auth middleware"],
+            "status": "complete",
+            "proof": [
+                "cookie session + CSRF + EncryptCookies",
+                "session + token guards / remember-me",
+                "Hash (bcrypt + optional argon2id)",
+                "Password broker + auth middleware",
+                "GET /login · /api/me",
+            ],
         },
         {
             "id": "M8",
             "name": "Error handling",
-            "status": "planned",
-            "proof": ["Handler report/render", "debug page", "log channels"],
+            "status": "complete",
+            "proof": [
+                "Handler report/render",
+                "APP_DEBUG page vs production views",
+                "errors:publish + log channels",
+                "GET /boom · /api/explode",
+            ],
         },
         {
             "id": "M9",
             "name": "Console + scheduler",
-            "status": "planned",
-            "proof": ["Command base", "grail list", "schedule:run"],
+            "status": "next",
+            "proof": ["Command base", "grail list", "schedule:run", "REPL"],
         },
         {
             "id": "M10",
@@ -114,6 +125,18 @@ def _milestones() -> list[dict]:
             "name": "Queues + workers",
             "status": "planned",
             "proof": ["Job dispatch", "queue:work", "failed jobs"],
+        },
+        {
+            "id": "M12",
+            "name": "Mail",
+            "status": "planned",
+            "proof": ["Mailable + Mailer", "log/array/SMTP", "Markdown mail"],
+        },
+        {
+            "id": "M13",
+            "name": "Notifications",
+            "status": "planned",
+            "proof": ["Notifiable", "mail + database channels", "email verification"],
         },
     ]
 

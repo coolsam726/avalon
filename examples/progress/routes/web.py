@@ -11,6 +11,7 @@ with Route.group(middleware=["web"]):
     Route.get("/", [WelcomeController, "index"])
     Route.get("/progress", [ProgressController, "index"])
     Route.get("/showcase", [ShowcaseController, "index"])
+    Route.get("/boom", [WelcomeController, "boom"])
     Route.get("/login", [AuthController, "show_login"], middleware=["guest"])
     Route.post("/login", [AuthController, "login"], middleware=["guest"])
     Route.post("/logout", [AuthController, "logout"], middleware=["auth"])

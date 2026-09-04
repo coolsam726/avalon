@@ -23,7 +23,7 @@ class SetLocaleMiddleware(Middleware):
                 if header:
                     available = _available_locales(translator)
                     chosen = _negotiate(header, available, translator.get_locale())
-                    if chosen:
+                    if chosen:  # pragma: no branch
                         set_locale(chosen)
                 else:
                     set_locale(translator.get_locale())

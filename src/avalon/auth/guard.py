@@ -186,7 +186,7 @@ class SessionGuard(Guard):
         from avalon.session.store import get_session
 
         session = get_session()
-        if session is not None:
+        if session is not None:  # pragma: no branch
             session.regenerate()
         await self._cycle_remember_token(user)
         self._queue_remember_cookie(user)

@@ -84,5 +84,8 @@ class DemoController(Controller):
     async def boom(self) -> dict[str, str]:
         raise HttpException("Intentional demo failure", status_code=418)
 
+    async def explode(self) -> dict[str, str]:
+        raise RuntimeError("Intentional demo failure")
+
     async def missing(self) -> dict[str, str]:
         raise NotFoundHttpException("Demo resource not found")

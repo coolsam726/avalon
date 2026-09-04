@@ -31,12 +31,18 @@ class FoundationServiceProvider(ServiceProvider):
         DatabaseServiceProvider(app).register()
         CaliburnServiceProvider(app).register()
         from avalon.auth.provider import AuthServiceProvider
+        from avalon.exceptions.provider import ExceptionsServiceProvider
+        from avalon.log.provider import LoggingServiceProvider
 
         AuthServiceProvider(app).register()
+        LoggingServiceProvider(app).register()
+        ExceptionsServiceProvider(app).register()
 
     def boot(self) -> None:
         from avalon.auth.provider import AuthServiceProvider
         from avalon.caliburn.provider import CaliburnServiceProvider
+        from avalon.exceptions.provider import ExceptionsServiceProvider
+        from avalon.log.provider import LoggingServiceProvider
         from avalon.orm.provider import DatabaseServiceProvider
         from avalon.translation.provider import TranslationServiceProvider
 
@@ -45,3 +51,5 @@ class FoundationServiceProvider(ServiceProvider):
         DatabaseServiceProvider(self.app).boot()
         CaliburnServiceProvider(self.app).boot()
         AuthServiceProvider(self.app).boot()
+        LoggingServiceProvider(self.app).boot()
+        ExceptionsServiceProvider(self.app).boot()

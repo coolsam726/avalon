@@ -18,6 +18,8 @@ _API_LINKS = [
     {"href": "/api/bag", "label": "full Request input surface"},
     {"href": "/api/di", "label": "container injection into an action"},
     {"href": "/api/boom", "label": "HttpException JSON shape"},
+    {"href": "/api/explode", "label": "M8 unhandled → JSON envelope"},
+    {"href": "/boom", "label": "M8 unhandled → HTML (debug/production)"},
 ]
 
 _FEATURES = [
@@ -68,3 +70,6 @@ class WelcomeController(Controller):
                 "home_url": url("/", absolute=False),
             },
         )
+
+    async def boom(self) -> Response:
+        raise RuntimeError("Intentional demo failure")
