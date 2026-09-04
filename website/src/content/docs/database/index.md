@@ -7,7 +7,7 @@ Almost every modern web application interacts with a database. Avalon makes this
 
 ## Configuration
 
-Database configuration lives in `config/database.py`. A newly created application is ready to use SQLite. You may also configure PostgreSQL, MySQL / MariaDB, SQL Server, and optionally Oracle.
+Configure connections in the snippet below. A newly created application is ready to use SQLite; you may also configure PostgreSQL, MySQL / MariaDB, SQL Server, and optionally Oracle.
 
 ```python
 # config/database.py
@@ -73,6 +73,7 @@ Oracle is not a first-party Laravel database driver. Avalon offers it as an opti
 The `DB` facade gives you a simple way to run queries:
 
 ```python
+# app/http/controllers/example_controller.py
 from avalon.orm import DB
 
 users = await DB.select(
@@ -86,12 +87,14 @@ await DB.statement("DELETE FROM sessions WHERE id = :id", {"id": sid})
 You may also start a query builder against a table (results are dictionaries, not models):
 
 ```python
+# app/http/controllers/example_controller.py
 await DB.table("users").where("email", email).get()
 ```
 
 ## Transactions
 
 ```python
+# app/http/controllers/example_controller.py
 async with DB.transaction():
     await User.create(email="a@b.c", name="Ada")
     async with DB.transaction():
@@ -102,6 +105,7 @@ async with DB.transaction():
 ## Using multiple connections
 
 ```python
+# app/http/controllers/example_controller.py
 await DB.connection("pgsql").table("users").get()
 ```
 

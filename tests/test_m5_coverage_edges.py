@@ -89,14 +89,14 @@ def test_collection_helpers() -> None:
     assert items.pluck("id").all() == [1, 2, 3]
     assert items.unique("n").count() == 2
     assert items.sort_by("n")[-1]["id"] == 3
-    assert set(items.group_by("n")) == {2, 9}
+    assert set(items.group_by("n").keys()) == {2, 9}
     assert items.take(1).count() == 1
     assert items.skip(2).count() == 1
     assert items.sum("n") == 13
     assert items.max("n") == 9
     assert items.contains(lambda row: row["id"] == 2)
     assert Collection([1, 2]).merge([3]).all() == [1, 2, 3]
-    assert Collection([1, 2]).reverse().all() == [2, 1]
+    assert Collection([1, 2]).reverse().values().all() == [2, 1]
     chunks = items.chunk(2)
     assert chunks.count() == 2
 

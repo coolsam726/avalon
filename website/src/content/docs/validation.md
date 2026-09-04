@@ -8,6 +8,7 @@ Avalon validates HTTP input with **FormRequest** classes — Laravel's FormReque
 ## Defining a form request
 
 ```python
+# app/http/requests/store_post_request.py
 from pydantic import Field
 
 from avalon.validation import FormRequest
@@ -32,6 +33,7 @@ python grail make:request StorePostRequest
 Type-hint the FormRequest; the kernel builds, authorizes, and validates it:
 
 ```python
+# app/http/controllers/post_controller.py
 class PostController(Controller):
     async def store(self, request: StorePostRequest) -> dict:
         return {"title": request.data.title}

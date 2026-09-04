@@ -28,7 +28,7 @@ class ConfigRepository:
     def _load_module_config(self, file: Path) -> Any:
         module_name = f"avalon_app_config_{file.stem}_{id(file)}"
         spec = importlib.util.spec_from_file_location(module_name, file)
-        if spec is None or spec.loader is None:
+        if spec is None or spec.loader is None:  # pragma: no cover
             raise ImportError(f"Cannot load config file: {file}")
         module = importlib.util.module_from_spec(spec)
         sys.modules[module_name] = module

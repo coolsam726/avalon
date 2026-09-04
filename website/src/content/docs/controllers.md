@@ -8,6 +8,7 @@ Instead of defining all route logic as closures, you may organize related action
 ## Basic controllers
 
 ```python
+# app/http/controllers/welcome_controller.py
 from avalon.http import Controller
 from avalon.caliburn import view
 
@@ -20,6 +21,7 @@ class WelcomeController(Controller):
 Wire the action in a route file:
 
 ```python
+# routes/web.py
 Route.get("/", [WelcomeController, "index"])
 ```
 
@@ -36,6 +38,7 @@ Nested namespaces work (`python grail make:controller Admin/UserController`) and
 Constructor and method dependencies are resolved from the application container:
 
 ```python
+# app/http/controllers/demo_controller.py
 from avalon.config import ConfigRepository
 from avalon.http import Controller, Request
 

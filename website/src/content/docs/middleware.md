@@ -10,6 +10,7 @@ Like Laravel 11, Avalon registers middleware in **`bootstrap/app.py`**. Keep `co
 ## Registering middleware
 
 ```python
+# bootstrap/app.py
 from pathlib import Path
 
 from avalon.framework import Application, Middleware
@@ -63,6 +64,7 @@ Callbacks run after configuration is loaded and merge into `http.*`. In tests yo
 A middleware class exposes an async `handle` method that receives the request and a `next` callable:
 
 ```python
+# app/http/middleware/demo_tag_middleware.py
 class DemoTagMiddleware:
     async def handle(self, request, next):
         response = await next(request)

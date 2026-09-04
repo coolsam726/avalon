@@ -12,13 +12,14 @@ compiled ahead of time for a thin render path.
 Templates use the **`.cal.html`** extension and live under `resources/views`.
 
 ```python
+# app/http/controllers/welcome_controller.py
 from avalon.caliburn import view
 
 return view("welcome", {"name": "Artisan"})
 ```
 
 ```html
-{{-- resources/views/welcome.cal.html --}}
+<!-- resources/views/welcome.cal.html -->
 @extends("layouts.app")
 
 @section("content")

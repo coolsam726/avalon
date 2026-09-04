@@ -378,6 +378,60 @@ code,
   }
 }
 
+.auth-pill {
+  margin: 0 0 1.25rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.auth-pill-guest code {
+  font-size: 0.85em;
+}
+
+.flash {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.45rem;
+  border: 1px solid var(--line);
+}
+
+.flash-status {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+}
+
+.flash-error {
+  background: color-mix(in srgb, #c44 12%, transparent);
+  border-color: color-mix(in srgb, #c44 40%, var(--line));
+  color: #a33;
+}
+
+:root[data-theme="dark"] .flash-error {
+  color: #f0a0a0;
+}
+
+.auth-form {
+  display: grid;
+  gap: 1rem;
+  max-width: 22rem;
+  margin: 1.5rem 0;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+
+.auth-form input {
+  font: inherit;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--line);
+  background: var(--panel, transparent);
+  color: var(--paper);
+}
+
 @media (max-width: 640px) {
   .hero {
     padding-top: 2.5rem;

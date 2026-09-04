@@ -15,6 +15,7 @@ Start from a Articulate model (`User.query()`) or a table (`DB.table("users")`).
 The shortcut never inspects the second argument. `where("op", ">")` means `op = '>'` — not a comparison operator.
 
 ```python
+# app/http/controllers/example_controller.py
 await Item.query().where("votes", ">", 4).get()
 await Item.query().where("name", "beta").first()   # name = 'beta'
 await Item.query().where("op", ">").first()        # op = '>'
@@ -47,6 +48,7 @@ Available methods include `select`, `add_select`, `select_raw`, `distinct`, `ord
 Aggregates: `count`, `sum`, `avg`, `max`, `min`, `value`, `pluck`, `exists`, `doesnt_exist`.
 
 ```python
+# app/http/controllers/example_controller.py
 name = await User.query().where("votes", ">=", 5).value("name")
 names = await User.query().order_by("name").pluck("name")
 sql = User.query().where("email", "like", "%@example.com").to_sql()
@@ -55,6 +57,7 @@ sql = User.query().where("email", "like", "%@example.com").to_sql()
 ## Joins and conditional clauses
 
 ```python
+# app/http/controllers/example_controller.py
 User.query().join("posts", "users.id", "posts.user_id")
 User.query().left_join("profiles", "users.id", "=", "profiles.user_id")
 User.query().when(active, lambda q: q.where("active", True))
@@ -79,6 +82,7 @@ User.query().tap(lambda q: print(q.to_sql()))
 | Other | Probe-then-write fallback |
 
 ```python
+# app/http/controllers/example_controller.py
 await User.query().upsert(
     {"email": "a@b.c", "name": "Updated"},
     unique_by=["email"],
@@ -94,6 +98,7 @@ Columns listed in `unique_by` must have a UNIQUE index or constraint — the sam
 ## Chunking results
 
 ```python
+# app/http/controllers/example_controller.py
 await User.query().order_by("id").chunk(100, lambda rows: ...)
 await User.query().each(lambda user: ..., size=100)
 async for user in User.query().cursor(size=100):

@@ -18,6 +18,7 @@ Controller actions may return several shapes. The HTTP kernel normalizes them in
 Prefer explicit helpers when the intent matters:
 
 ```python
+# app/http/controllers/welcome_controller.py
 from avalon.http import html, json, redirect
 from avalon.caliburn import view
 
@@ -50,12 +51,14 @@ Throwing an [`HttpException`](/errors/) on an API route still yields the locked 
 `redirect(to)` resolves `to` through [`url()`](/urls/) so `APP_BASE_PATH` is honored:
 
 ```python
+# app/http/controllers/welcome_controller.py
 return redirect("/dashboard")  # → /apps/progress/dashboard when mounted
 ```
 
 ## Headers and status
 
 ```python
+# app/http/controllers/welcome_controller.py
 return json({"ok": True}, status=201, headers={"X-Demo": "1"})
 return html("<p>Gone</p>", status=410)
 ```

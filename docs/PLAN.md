@@ -91,6 +91,8 @@ avalon/
     console/                   # M9 — commands, scheduling
     filesystem/                # M10 — disks / FlySystem-shaped Storage
     queue/                     # M11 — jobs, workers, failed jobs
+    mail/                      # M12 — Mailable, Mailer, transports
+    notifications/             # M13 — Notifiable, channels (mail, database, …)
     installer/                 # avalon new …
     orm/                       # M5
     caliburn/                  # M6 — optional for API apps
@@ -115,6 +117,8 @@ avalon/
 - later: `from avalon.console import Command, schedule`
 - later: `from avalon.filesystem import Storage`
 - later: `from avalon.queue import Job, dispatch`
+- later: `from avalon.mail import Mail, Mailable`
+- later: `from avalon.notifications import notify, Notifiable`
 
 ### Subpackage boundaries
 
@@ -133,6 +137,8 @@ avalon/
 | `avalon.console` | Command base, discovery, scheduler (M9) |
 | `avalon.filesystem` | Disks, Storage façade, FlySystem-shaped drivers (M10) |
 | `avalon.queue` | Jobs, queues, workers, failed-job handling (M11) |
+| `avalon.mail` | Mailable, Mailer, transports, Markdown mail (M12) |
+| `avalon.notifications` | Notifiable, notification channels, database notifications (M13) |
 | `avalon.installer` | Installer CLI (`avalon new`) |
 | `avalon.orm` | Eloquent-like ORM (M5) |
 | `avalon.caliburn` | Caliburn compiler/runtime (M6) |
@@ -218,7 +224,7 @@ Mirror Laravel’s Basics **order and coverage**. Deep Caliburn how-tos stay in 
 | --- | --- | --- | --- |
 | Routing | `routing` | **Shipped (M2)** — `Route` DSL, groups, polarity | **Done** |
 | Middleware | `middleware` | **Shipped (M2)** | **Done** |
-| CSRF Protection | `csrf` | **M7** — Caliburn `@csrf` stub only | **Placeholder** (honest M7 page) |
+| CSRF Protection | `csrf` | **Shipped (M7 foundation)** — `VerifyCsrfToken` + `@csrf` | **Done** |
 | Controllers | `controllers` | **Shipped (M2/M3)** — base `Controller`, `make:controller`, DI | **Done** |
 | Requests | `requests` | **Shipped (M2)** — `Request` bag | **Done** |
 | Responses | `responses` | **Shipped (M2)** — `Response`, `html()`, JSON polarity | **Done** |
@@ -226,7 +232,10 @@ Mirror Laravel’s Basics **order and coverage**. Deep Caliburn how-tos stay in 
 | Blade Templates | *(Caliburn section)* | **Shipped (M6)** | **Done** as Caliburn group (not duplicated under Basics) |
 | Asset Bundling | `asset-bundling` | **Partial (M6)** — `asset()` / `@asset` + `public/` on `grail serve`; Vite/Tailwind = **starter kits** | **Done** — honest “no Vite in core” page |
 | URL Generation | `urls` | **Partial (M3)** — `url()`, `asset()`, `redirect()`; named `route()` = Later | **Done** |
-| Session | `session` | **M7** | **Placeholder** (honest M7 page) |
+| Session | `session` | **Shipped (M7 foundation)** — cookie driver, encrypt, flash | **Done** |
+| Authentication | `authentication` | **Shipped (M7)** — guards, remember-me, events, docs | **Done** |
+| Hashing | `hashing` | **Shipped (M7)** — bcrypt + optional argon2id | **Done** |
+| Passwords | `passwords` | **Shipped (M7)** — broker + confirm; outbound mail **M12**/**M13** | **Done** |
 | Validation | `validation` | **Shipped (M3)** — `FormRequest` | **Done** |
 | Error Handling | `errors` | **Minimal (M2)**; full handler **M8** | **Done** — thin “today” + M8 roadmap |
 | Logging | `logging` | **M8** | **Placeholder** (honest M8 page) |
@@ -253,6 +262,18 @@ The Basics
 Caliburn remains its own top-level group (Blade equivalent). Do **not** put the full Caliburn tutorial under Basics.
 
 **Gate before starting M7 implementation:** Basics pages for shipped surfaces are published and linked in `website/astro.config.mjs` (**met**). Expand CSRF / Session / Logging placeholders when those milestones land — not fake APIs.
+
+### Digging Deeper — Mail & Notifications (binding when M12/M13 land)
+
+Laravel places **Mail** and **Notifications** under Digging Deeper (not Basics). Avalon mirrors that:
+
+| Laravel | Avalon docs slug (target) | Milestone | Docs action |
+| --- | --- | --- | --- |
+| Collections | `collections` | Support Collections | **Done** |
+| Mail | `mail` | **M12** | Write when mail ships |
+| Notifications | `notifications` | **M13** | Write when notifications ship |
+
+Starlight **Digging Deeper** sidebar grows with those pages; do not stub fake APIs ahead of the milestones.
 
 ## Decision: Views — Caliburn
 
@@ -322,11 +343,29 @@ Ship a dedicated **Caliburn** sidebar group (peer to Articulate / Database), Lar
 Pages land as each ladder rung ships — do not wait for M6 close to start the section.
 ## Decision: Scope discipline
 
-Bite-sized milestones. **No** queues, notifications, scheduler, or mail until the **HTTP + validation + i18n + ORM + views + auth** core path is boring and tested (through M7). Seeders ship with M5 ORM; **model factories follow later** (still binding — they are how seeders scale). Caliburn is its own track after the core gate. Error handling, console (incl. a Tinker-class REPL), filesystem, and queues are sketched as **M8–M11** so the roadmap is honest — they are not next work. Multi-version docs + Prologue stay on the docs track (see Documentation site decision).
+Bite-sized milestones. **No** queues, notifications, scheduler, or mail until the **HTTP + validation + i18n + ORM + views + auth** core path is boring and tested (through M7). Seeders ship with M5 ORM; **model factories follow later** (still binding — they are how seeders scale). Caliburn is its own track after the core gate. Error handling, console (incl. a Tinker-class REPL), filesystem, queues, **mail**, and **notifications** are sketched as **M8–M13** so the roadmap is honest — they are not next work until their predecessors land. Multi-version docs + Prologue stay on the docs track (see Documentation site decision).
 
 **Localization is the one deliberate exception to “defer until needed.”** It sits at M4 because retrofitting translations across four message-producing layers costs far more than building them translatable. M4 exhausts **full Laravel localization parity** (not a thin core) — see the localization decision.
 
 **Exhaust means full parity within the milestone’s declared scope.** Do not ship thin placeholders that claim a feature is done. Iterate inside the milestone (API + tests + living example) until the Laravel/Adonis-class DX for that slice is real, then move on. “Optional if light” / partial façades are not an exit criteria.
+
+## Decision: Support Collections (`avalon.support`)
+
+Laravel’s [`Illuminate\Support\Collection`](https://laravel.com/docs/collections) is **not** Eloquent’s model collection. Articulate already returns an Eloquent-shaped `Collection` from multi-row reads; Avalon also ships a first-class **Support** collection for general list/map work — `collect()` + fluent chains — matching Laravel’s Collections docs.
+
+| Concern | Contract |
+| --- | --- |
+| Package | `avalon.support` — `Collection`, `collect()`, class helpers (`times`, `range`, `wrap`, `unwrap`, `make`) |
+| Keys | Ordered-map semantics (list → contiguous int keys; dict keeps keys) |
+| Returns | Transformers return **new** instances; `push` / `put` / `pop` / `pull` / `transform` match Laravel mutability |
+| Macros | `Collection.macro(name, callback)` |
+| Eloquent | `avalon.orm.collection.Collection` **extends** Support `Collection` (`load` / `load_missing` / `model_keys`) |
+| Lazy | `LazyCollection` deferred until a streaming consumer needs it |
+| Docs | Starlight **Collections** page (Support) + pointer from Articulate |
+
+**Gate:** eager `Collection` exhausts the Laravel “Available Methods” list (skip Lazy / `dd` / `dump`); tests + docs green; Articulate regressions still pass. Can ship alongside M7 — does not block auth exhaust.
+
+**Status (Collections):** Support `Collection` + `collect()` shipped — method surface (incl. `splice`, `multiply`, `reduce_spread`, assoc/using diffs & intersects, `to_pretty_json` / `from_json`), key-preserving filters, macros, Starlight **Collections** docs, `tests/test_support_collection.py`. Articulate `orm.Collection` extends Support. `LazyCollection` still deferred.
 
 ## Decision: Production serving (ASGI)
 
@@ -375,13 +414,13 @@ Scaffolded apps ship **`routes/web.py`** and **`routes/api.py`**. They are not i
 1. Controllers registered in `web.py` return HTML (string / `html()` helper / later Caliburn `view()`). Do **not** default web routes to JSON dicts.
 2. Controllers registered in `api.py` return JSON (dict/list / `json()`). Do **not** return HTML from API routes.
 3. Framework does **not** auto-negotiate content type from `Accept` to paper over mixing the two files — put the route in the right file.
-4. Until sessions land (M7), “stateful” on web means **cookie-capable HTML surface + reserved `web` middleware group**, not a fake session store.
+4. Stateful `web` means session + CSRF + encrypted cookies (M7); `api` stays bearer-only.
 5. Until Caliburn (M6), web HTML may be hand-built strings via `html()` — still HTML, not JSON-as-HTML.
 6. `HttpException` on API stays JSON `{message, status, errors?}`. On web, prefer HTML error pages once views exist; until then a minimal HTML error body is acceptable for web-only routes.
 
 **Known boundary:** `avalon.http.Response` is currently Starlette's `Response` re-exported so controllers can annotate HTML actions without importing Starlette. App code still imports `avalon.*` only. An Avalon-owned response object is a candidate for a later DX pass — only if it earns its keep.
 
-**Middleware groups (shipped):** `config/http.py` declares empty `middleware_groups` shells; **`bootstrap/app.py`** registers aliases and fills `web` / `api` via `Application.configure().with_middleware(...)`. Route files still reference groups by name (`Route.group(middleware=["web"])`). The kernel expands group names into their members before resolving aliases, recursively, and raises on circular references. Session/CSRF content for `web` lands with M7; API throttling/CORS in the hardening pass.
+**Middleware groups (shipped):** `config/http.py` declares empty `middleware_groups` shells; **`bootstrap/app.py`** registers aliases and fills `web` / `api` via `Application.configure().with_middleware(...)`. Route files still reference groups by name (`Route.group(middleware=["web"])`). The kernel expands group names into their members before resolving aliases, recursively, and raises on circular references. **`web`** includes EncryptCookies, StartSession, VerifyCsrfToken, StartAuth; **`api`** stays without session/CSRF (StartAuth for bearer only). API throttling/CORS remain in the hardening pass.
 
 **Living example rule:** Request-bag / verb demos that return structured data live under **`/api/…`**. Browser pages (`/`, progress board) live under **`web.py`** and render HTML.
 
@@ -674,11 +713,39 @@ Full Eloquent parity — see the ORM decision above for the binding ladder. M5 e
 
 ### M7 — `avalon.auth`
 
-- Session + token guards
-- Middleware `auth`, `guest`
-- Fill the reserved **`web`** middleware group: session start, cookie encryption, CSRF
-- Keep **`api`** group stateless (token/bearer only)
-- CSRF (with sessions) + cookie signing; Caliburn `@csrf` / `@auth` / `@guest` as directives land
+**Parity target:** Laravel’s [Authentication](https://laravel.com/docs/authentication) + [Hashing](https://laravel.com/docs/hashing) + [Passwords](https://laravel.com/docs/passwords) documented surfaces — exhaust inside M7, same rule as M4/M5/M6. A thin “session cookie + middleware alias” exit is **not** allowed.
+
+**In scope (framework core):**
+
+| Ladder rung | Contract |
+| --- | --- |
+| Hashing | `Hash.make` / `check` / `needs_rehash` / `is_hashed` (bcrypt default; config-driven) |
+| Contracts | `Authenticatable`, `UserProvider`; Articulate model provider |
+| Config | `config/auth.py` — defaults, guards, providers, passwords brokers |
+| Session guard | `attempt` / `validate` / `login` / `logout` / `login_using_id` / `once` / `once_using_id` / remember-me |
+| Token guard | Classic API token lookup via user provider (stateless `api` guard) |
+| Helpers | `auth()` manager; retrieve user / `check` / `guest` / `id` / `guard(name)` |
+| Middleware | `auth` (optional `:guard`), `guest`, `password.confirm`, HTTP Basic |
+| Password confirm | Session timestamp + `password.confirm` middleware |
+| Password broker | Reset tokens table/API, `send_reset_link` / `reset` (delivery pluggable until **M12**/**M13**) |
+| Catalogs | Wire `lang/en/auth.py` + `passwords.py` through attempts / broker statuses |
+| Rehash | Automatic rehash on login when `needs_rehash` |
+| Docs | Starlight **Authentication**, **Hashing**, **Passwords** (+ Session/CSRF already in Basics) |
+| Living example | Progress: password column, `attempt()` login, protected route, bearer/token demo |
+
+**Explicitly deferred (not M7):**
+
+| Item | Home |
+| --- | --- |
+| Starter-kit auth UI (Breeze-class scaffolds) | Starter kits |
+| Sanctum / Passport / Socialite | First-party packages / Later |
+| Authorization (Gates / Policies) | Later security milestone (Laravel’s separate Authorization docs) |
+| Email verification | **M13** notifications (+ mail channel) |
+| Real outbound reset mail | **M12** mail / **M13** notifications — broker + token API ships now |
+
+**Gate:** ladder exhausted, Auth/Hashing/Passwords docs published, progress uses real credentials, coverage ≥ 98% (auth + hashing + passwords packages aim 100%).
+
+**Status (M7):** Ladder shipped — session/CSRF/EncryptCookies; `Hash` (bcrypt + optional `argon2`/`argon2id`); session + token guards (`attempt`/`login`/`logout`/`once*`/`login_using_id`, remember-me **Set-Cookie**, rehash-on-login); `auth`/`guest`/`password.confirm`/`auth.basic`/`auth.start`; `Request.user()`; intended URL; auth events; `Password` broker (memory + optional DB table); catalogs; scaffold `config/auth.py` + `config/hashing.py`; Starlight Authentication/Hashing/Passwords; progress login + `/api/me`. Deferred by design: Sanctum/Passport/Socialite, Gates/Policies; email verification → **M13**; outbound reset mail → **M12**/**M13**.
 
 ### M8 — Error handling (`avalon.exceptions` + `avalon.log`)
 
@@ -723,7 +790,7 @@ FlySystem-shaped **Storage** façade — app code never talks to raw `pathlib` f
 - Integrate with existing `Request` uploads (`UploadedFile` → `Storage`)
 - Provider + `storage()` helper; smoke against local disk
 
-**Depends on:** M2 request files (done). Natural prerequisite for queue failed-job payloads and mail attachments later.
+**Depends on:** M2 request files (done). Natural prerequisite for queue failed-job payloads and **M12** mail attachments.
 
 ### M11 — Queues + job workers (`avalon.queue`)
 
@@ -738,9 +805,71 @@ FlySystem-shaped **Storage** façade — app code never talks to raw `pathlib` f
 
 **Depends on:** M5 for database queue; M8 for failure reporting; M9 for `queue:*` commands; M10 nice-to-have for job artifacts.
 
+**Unblocks:** queued mailables (M12) and queued notifications (M13).
+
+### M12 — Mail (`avalon.mail`)
+
+**Parity target:** Laravel’s [Mail](https://laravel.com/docs/mail) documented surface — `Mailable`, `Mail` façade, transports, Markdown mailables. A thin “SMTP wrapper” exit is **not** allowed.
+
+**In scope (framework core):**
+
+| Ladder rung | Contract |
+| --- | --- |
+| Config | `config/mail.py` — default mailer, from address, transport settings |
+| Mailable | Class-based messages: `envelope` / `content` / `attachments` (Laravel 9+ shape) or exhaust an equivalent fluent API |
+| Mailer | `Mail.to(...).send(Mailable)` / `cc` / `bcc` / `send` / `queue` (queue when M11 exists; sync always) |
+| Transports | **log** + **array** (tests/dev) + **SMTP** (production baseline); optional extras later (SES, Mailgun, …) as drivers behind the same API |
+| Markdown mail | Caliburn/Markdown templates under `resources/views/mail` (or agreed path); themeable components |
+| Attachments | From paths / `Storage` disks (M10) / raw bytes |
+| Assertions | Test helpers: assert sent / not sent / queued (array driver) |
+| Docs | Starlight **Mail** (Digging Deeper) |
+| Living example | Progress (or mail-focused demo): send a welcome / password-reset mailable via log or SMTP in `.env` |
+
+**Explicitly deferred (not M12):**
+
+| Item | Home |
+| --- | --- |
+| Notification channels / `Notifiable` | **M13** |
+| Email verification UX | **M13** (+ auth) |
+| Broadcast / Slack / SMS channels | Later / first-party extras |
+| Full third-party ESP kit matrix | Optional extras after SMTP baseline |
+
+**Depends on:** M6 Caliburn for Markdown/HTML mail views; M10 for attachment disks (soft — path attachments can ship earlier); M11 for `ShouldQueue` mailables (sync send ships without waiting on workers).
+
+**Gate:** ladder exhausted, Mail docs published, array/log drivers green in CI, SMTP documented, coverage ≥ 98% on `avalon.mail` (aim 100%).
+
+### M13 — Notifications (`avalon.notifications`)
+
+**Parity target:** Laravel’s [Notifications](https://laravel.com/docs/notifications) documented surface — `Notifiable`, notification classes, channels, database notifications. Closes M7 deferrals that need outbound delivery.
+
+**In scope (framework core):**
+
+| Ladder rung | Contract |
+| --- | --- |
+| Notifiable | Mixin/trait on models: `notify` / `notify_now` / route notification for mail |
+| Notification | Class with `via(notifiable)` + channel builders (`to_mail`, `to_database`, …) |
+| Channels | **mail** (M12), **database** (notifications table + Articulate), **log/array** for tests |
+| Queue | `ShouldQueue` notifications when M11 exists; sync always available |
+| Database UI data | Stored payload for in-app notification lists (no full SPA required) |
+| Auth wiring | Password-reset delivery via notification/mail; **email verification** (`MustVerifyEmail`-shaped) |
+| Docs | Starlight **Notifications** (+ update Passwords / Authentication for real delivery) |
+| Living example | Progress: reset-password notification + verified-email flow (or equivalent demo) |
+
+**Explicitly deferred (not M13):**
+
+| Item | Home |
+| --- | --- |
+| Broadcast / Slack / SMS / push | Later / first-party packages |
+| Notification inbox SPA | Starter kits / app code |
+| Marketing drip / bulk mail | Outside framework core |
+
+**Depends on:** M12 Mail (mail channel); M5 ORM (database channel); M7 auth (verification + reset consumers); M11 for queued notifications (optional for sync).
+
+**Gate:** ladder exhausted, Notifications docs published, mail + database channels tested, password-reset outbound no longer pluggable-only theater, coverage ≥ 98% on `avalon.notifications` (aim 100%).
+
 ### Later (still deferred)
 
-- Mail, notifications, broadcasting
+- Broadcasting (Echo-class / websocket fan-out)
 - **Model factories** (Eloquent/Laravel Factory parity) — `Factory` base, `definition()` / states / sequences, `make:factory`, `Model.factory()`, `create` / `make` / `count` / relationships; primary consumer is **seeders** (`DatabaseSeeder` + demo data). Homes after Articulate is boring in real apps; do not leave seeders as the permanent only way to fake rows.
 - Policies/gates
 - Starter kits (web kit vs API kit reflecting route polarity)
@@ -763,6 +892,6 @@ FlySystem-shaped **Storage** façade — app code never talks to raw `pathlib` f
 
 ## Next implementation focus
 
-**Basics docs debt cleared** — Starlight “The Basics” mirrors Laravel’s map (Routing → Logging), with honest placeholders for CSRF / Session (M7) and Logging (M8).
+**M7 auth gate met** — Authentication + Hashing + Passwords ladder exhausted (see M7 status). **Next: M8** error handling + logging when ready. Roadmap through **M13** now includes Mail (M12) and Notifications (M13) after queues.
 
-**Next:** M7 auth — sessions, real CSRF, wire `@auth` / `@guest` / `@csrf`; replace CSRF/Session placeholder pages with real how-tos as those surfaces ship.
+**Docs:** Authentication / Hashing / Passwords how-tos published (Session + CSRF in Basics).

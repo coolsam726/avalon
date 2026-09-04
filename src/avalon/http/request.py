@@ -71,6 +71,10 @@ class Request:
         self._files: dict[str, UploadedFile | list[UploadedFile]] = dict(files or {})
         self._input: dict[str, Any] = {**self._query, **self._body}
         self._hydrated = hydrated
+        self._session: Any = None
+        self._cookies: dict[str, str] | None = None
+        self._auth: Any = None
+        self._csrf_token: str | None = None
 
     @classmethod
     async def create(cls, request: StarletteRequest) -> Request:
@@ -154,7 +158,18 @@ class Request:
 
     @property
     def cookies(self) -> Any:
+        if self._cookies is not None:
+            return self._cookies
         return self._request.cookies
+
+    @property
+    def session(self) -> Any:
+        """Session bag when :class:`~avalon.session.StartSession` is in the stack."""
+        if self._session is None:
+            raise RuntimeError(
+                "Session store not started. Add StartSession to the web middleware group."
+            )
+        return self._session
 
     @property
     def query_params(self) -> Any:
@@ -184,6 +199,8 @@ class Request:
         return self._request.headers.get(key, default)
 
     def cookie(self, key: str, default: Any = None) -> Any:
+        if self._cookies is not None:
+            return self._cookies.get(key, default)
         return self._request.cookies.get(key, default)
 
     def bearer_token(self) -> str | None:
@@ -191,6 +208,19 @@ class Request:
         if auth.lower().startswith("bearer "):
             return auth[7:].strip() or None
         return None
+
+    def user(self, guard: str | None = None) -> Any:
+        """Laravel ``$request->user($guard)`` — authenticated user for a guard."""
+        manager = self._auth
+        if manager is None:
+            from avalon.auth.guard import get_auth
+
+            manager = get_auth()
+        if manager is None:
+            return None
+        if guard is None:
+            return manager.user()
+        return manager.guard(guard).user()
 
     # --- input bag (Laravel all / input / query / post) ------------------
 

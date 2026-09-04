@@ -10,6 +10,7 @@ Register routes with the `Route` façade from `avalon.routing`. Controllers are 
 ## Basic routing
 
 ```python
+# routes/web.py
 from app.http.controllers.welcome_controller import WelcomeController
 
 from avalon.routing import Route
@@ -39,13 +40,14 @@ with Route.group(prefix="/api", middleware=["api"]):
     Route.get("/health", [HealthController, "index"])
 ```
 
-Until sessions land (M7), `web` is cookie-capable and reserved for session/CSRF middleware — not a fake session store.
+The `web` group runs session start, cookie encryption, CSRF, and auth hydration. The `api` group stays stateless (bearer via `auth.start` only).
 
 ## Groups
 
 Groups are **context-manager only** (no fluent `Route.middleware(...).group(...)` chain):
 
 ```python
+# routes/api.py
 with Route.group(prefix="/api", middleware=["api"]):
     Route.get("/health", [HealthController, "index"])
 
@@ -59,6 +61,7 @@ Nested groups concatenate prefixes and accumulate middleware outer → inner. Gr
 ## Route parameters
 
 ```python
+# routes/web.py
 Route.get("/posts/{post}", [PostController, "show"])
 ```
 
@@ -67,6 +70,7 @@ Path parameters are available on the request via `request.route("post")` (they a
 ## Per-route options
 
 ```python
+# routes/web.py
 Route.get("/ping", [DemoController, "ping"], name="ping", middleware=["locale"])
 ```
 

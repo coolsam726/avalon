@@ -23,6 +23,7 @@ public/
 Use `asset()` in Python or `@asset` / `asset()` inside Caliburn so `APP_BASE_PATH` is applied:
 
 ```python
+# app/http/controllers/welcome_controller.py
 from avalon.routing import asset
 
 asset("css/app.css")
@@ -30,6 +31,7 @@ asset("css/app.css")
 ```
 
 ```html
+<!-- resources/views/layouts/app.cal.html -->
 <link rel="stylesheet" href="{{ asset('css/app.css') }}">
 <script src="@asset('js/app.js')" defer></script>
 ```

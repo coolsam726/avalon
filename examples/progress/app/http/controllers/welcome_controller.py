@@ -30,6 +30,10 @@ _FEATURES = [
         "body": "Eager loading, soft deletes, morphs, and grail migrate — async by default.",
     },
     {
+        "title": "Session + CSRF",
+        "body": "Signed cookie sessions, EncryptCookies, and @csrf on the web group.",
+    },
+    {
         "title": "Web vs API",
         "body": "Same kernel, polarity-aware responses: HTML on web, JSON under /api.",
     },
@@ -51,7 +55,16 @@ class WelcomeController(Controller):
                 "env": config("app.env", "local"),
                 "board_url": url("/progress", absolute=False),
                 "showcase_url": url("/showcase", absolute=False),
+                "login_url": url("/login", absolute=False),
                 "features": _FEATURES,
                 "api_links": links,
+            },
+        )
+
+    async def settings(self) -> Response:
+        return view(
+            "auth.settings",
+            {
+                "home_url": url("/", absolute=False),
             },
         )

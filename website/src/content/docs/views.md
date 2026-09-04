@@ -8,6 +8,7 @@ Views separate your controller from HTML. Avalon's view engine is **Caliburn** â
 ## Creating and returning views
 
 ```python
+# app/http/controllers/welcome_controller.py
 from avalon.caliburn import view
 
 
@@ -18,7 +19,7 @@ async def index(self):
 Templates live under `resources/views`. Dots map to directories: `view("posts.show")` â†’ `resources/views/posts/show.cal.html`.
 
 ```html
-{{-- resources/views/welcome.cal.html --}}
+<!-- resources/views/welcome.cal.html -->
 @extends("layouts.app")
 
 @section("content")

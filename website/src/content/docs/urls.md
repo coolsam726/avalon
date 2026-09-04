@@ -17,6 +17,7 @@ The HTTP kernel mounts the ASGI app at the same prefix so `grail serve` matches 
 ## `url()`
 
 ```python
+# app/http/controllers/welcome_controller.py
 from avalon.routing import url
 
 url("/progress")
@@ -31,6 +32,7 @@ Already-absolute URLs (`https://…` or `//…`) are returned unchanged.
 Same prefixing for static files under `public/`:
 
 ```python
+# app/http/controllers/welcome_controller.py
 from avalon.routing import asset
 
 asset("css/app.css")
@@ -41,6 +43,7 @@ See [Asset Bundling](/asset-bundling/).
 ## `redirect()`
 
 ```python
+# app/http/controllers/welcome_controller.py
 from avalon.http import redirect
 
 return redirect("/progress")  # path resolved through url(..., absolute=False)
@@ -55,6 +58,7 @@ Per-route `name=` is accepted on the router today. A Laravel-style `route("name"
 Templates receive `url` and `asset` automatically:
 
 ```html
+<!-- resources/views/welcome.cal.html -->
 <a href="{{ url('/progress') }}">Milestones</a>
 <img src="{{ asset('images/avalon-banner.svg') }}" alt="Avalon">
 ```

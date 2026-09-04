@@ -10,7 +10,7 @@ Caliburn layouts mirror Blade.
 ## Yielding sections
 
 ```html
-{{-- layouts/app.cal.html --}}
+<!-- resources/views/layouts/app.cal.html -->
 <html>
   <head>
     <title>@yield("title", "Avalon")</title>
@@ -25,7 +25,7 @@ Caliburn layouts mirror Blade.
 ## Extending a layout
 
 ```html
-{{-- home.cal.html --}}
+<!-- resources/views/home.cal.html -->
 @extends("layouts.app")
 
 @section("title", "Home")
@@ -44,6 +44,7 @@ When a child overrides a section that an intermediate layout already defined,
 `@parent` inserts the parent section’s content:
 
 ```html
+<!-- resources/views/home.cal.html -->
 @section("content")
   @parent
   <p>Extra for this page.</p>

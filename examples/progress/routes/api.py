@@ -19,6 +19,7 @@ from avalon.routing import Route
 
 with Route.group(prefix="/api", middleware=["api"]):
     Route.get("/health", [HealthController, "index"])
+    Route.get("/me", [HealthController, "me"], middleware=["auth:api"])
     Route.get("/ping", [DemoController, "ping"])
     Route.get("/progress", [ProgressController, "data"])
     Route.get("/locale", [LocaleController, "index"])

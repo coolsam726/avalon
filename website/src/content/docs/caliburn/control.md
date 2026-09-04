@@ -25,6 +25,7 @@ Inside `@foreach` / `@forelse`, `loop` exposes Blade-shaped flags:
 `index`, `iteration`, `remaining`, `count`, `first`, `last`, `even`, `odd`, `depth`, `parent`.
 
 ```html
+<!-- resources/views/welcome.cal.html -->
 @foreach(users as user)
   <li @if(loop.first)class="first"@endif>{{ user.name }}</li>
 @endforeach
@@ -38,6 +39,7 @@ Bare `@empty` inside `@forelse` remains the empty branch. Standalone
 Until the auth milestone wires real guards, use context keys:
 
 ```html
+<!-- resources/views/partials/nav.cal.html -->
 @auth
   <p>Welcome back</p>
 @endauth
@@ -50,6 +52,7 @@ Until the auth milestone wires real guards, use context keys:
 ## Localization in views
 
 ```html
+<!-- resources/views/welcome.cal.html -->
 @lang("messages.welcome", {"name": name})
 {{ __("messages.welcome", {"name": name}) }}
 ```

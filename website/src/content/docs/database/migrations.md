@@ -32,6 +32,7 @@ Prefer Laravel-style alter names **without** a leading `create_`: `add_slug_to_p
 A create migration:
 
 ```python
+# database/migrations/2026_01_01_000000_create_posts_table.py
 from avalon.orm import Migration, Schema
 
 class CreatePostsTable(Migration):
@@ -52,6 +53,7 @@ class CreatePostsTable(Migration):
 An update migration uses `Schema.table`:
 
 ```python
+# database/migrations/2026_01_01_000001_add_slug_to_posts_table.py
 class AddSlugToPostsTable(Migration):
     async def up(self) -> None:
         await Schema.table(
@@ -68,6 +70,7 @@ Files must match `YYYY_MM_DD_HHMMSS_slug.py` and define a `Migration` subclass. 
 ## The schema builder
 
 ```python
+# database/migrations/2026_01_01_000000_create_posts_table.py
 await Schema.create(
     "posts",
     lambda table: (
@@ -94,6 +97,7 @@ await Schema.drop_if_exists("posts")
 **Alters:** `rename_column("from", "to")`, `drop_column(...)`, `foreign("user_id").references("id").on("users")`, `foreign_id("user_id").constrained()`, plus `cascade_on_delete()` / `null_on_delete()` / `cascade_on_update()` (and restrict / no_action variants).
 
 ```python
+# database/migrations/2026_01_01_000001_add_slug_to_posts_table.py
 await Schema.table(
     "posts",
     lambda table: (

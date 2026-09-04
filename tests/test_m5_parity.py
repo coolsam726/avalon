@@ -596,16 +596,16 @@ async def test_connection_urls_nested_tx_and_schema(memory_db) -> None:
     assert empty == []
     assert Collection([1]) == Collection([1])
     assert Collection([1]) != "nope"
-    assert Collection([0, 1]).filter().all() == [1]
+    assert Collection([0, 1]).filter().values().all() == [1]
     assert Collection([1, 2]).map(lambda n: n + 1).all() == [2, 3]
-    assert Collection([1, 2]).reject(lambda n: n == 1).all() == [2]
+    assert Collection([1, 2]).reject(lambda n: n == 1).values().all() == [2]
     assert Collection([{"a": 1}]).where_in("a", [1]).count() == 1
     assert Collection([{"a": 1}]).first_where("a", 1)["a"] == 1
     assert Collection([{"a": 1, "b": 2}]).pluck("a", "b") == {2: 1}
-    assert Collection([1, 1, 2]).unique().all() == [1, 2]
+    assert Collection([1, 1, 2]).unique().values().all() == [1, 2]
     assert Collection([{"n": 2}, {"n": 1}]).sort_by_desc("n")[0]["n"] == 2
     keyed = Collection([{"id": 1}]).key_by("id")
-    assert 1 in keyed
+    assert keyed.has(1)
     Collection([1]).each(lambda n: n)
     assert Collection([1, 2]).contains(1)
     assert Collection([1, 2]).avg() == 1.5

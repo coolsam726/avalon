@@ -110,6 +110,22 @@ document.addEventListener('DOMContentLoaded', () => {
 					],
 				},
 				{
+					label: 'Security',
+					collapsed: true,
+					items: [
+						{ label: 'Authentication', slug: 'authentication' },
+						{ label: 'Hashing', slug: 'hashing' },
+						{ label: 'Passwords', slug: 'passwords' },
+					],
+				},
+				{
+					label: 'Digging Deeper',
+					collapsed: true,
+					items: [
+						{ label: 'Collections', slug: 'collections' },
+					],
+				},
+				{
 					label: 'Database',
 					collapsed: true,
 					items: [

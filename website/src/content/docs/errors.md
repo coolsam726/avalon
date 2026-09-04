@@ -32,6 +32,7 @@ Common types from `avalon.http.exceptions`:
 Validation uses `ValidationException` (422 with `errors`). Authorization failures on FormRequest use **403**.
 
 ```python
+# app/http/controllers/post_controller.py
 from avalon.http.exceptions import NotFoundHttpException
 
 raise NotFoundHttpException("Post not found.")

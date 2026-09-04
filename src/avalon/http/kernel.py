@@ -188,7 +188,11 @@ class HttpKernel:
         return wrapped
 
     def _resolve_middleware(self, name: str, aliases: dict[str, Any]) -> Middleware:
-        target = aliases.get(name, name)
+        param: str | None = None
+        key = name
+        if isinstance(name, str) and ":" in name:
+            key, _, param = name.partition(":")
+        target = aliases.get(key, key)
         if isinstance(target, type):
             cls = target
         elif isinstance(target, str):
@@ -198,7 +202,24 @@ class HttpKernel:
 
         if not isinstance(cls, type) or not issubclass(cls, Middleware):
             raise TypeError(f"{target!r} is not a Middleware subclass")
+        if param is not None:
+            return self._instantiate_parameterized(cls, key, param)
         return self.app.make(cls)
+
+    def _instantiate_parameterized(
+        self,
+        cls: type[Middleware],
+        alias_name: str,
+        param: str,
+    ) -> Middleware:
+        if alias_name in {"auth", "guest"}:
+            return cls(guard=param)  # type: ignore[call-arg]
+        if alias_name in {"auth.basic", "basic"}:
+            return cls(field=param)  # type: ignore[call-arg]
+        try:
+            return cls(param)  # type: ignore[call-arg]
+        except TypeError:
+            return self.app.make(cls)
 
     def _resolve_action(self, action: Action) -> Callable[..., Any]:
         if callable(action) and not isinstance(action, type):

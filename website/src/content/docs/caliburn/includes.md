@@ -6,6 +6,7 @@ description: "Compose templates with @include and related directives."
 # Including Subviews
 
 ```html
+<!-- resources/views/layouts/app.cal.html -->
 @include("partials.nav")
 ```
 
@@ -13,6 +14,7 @@ Pass a second argument to merge data into the child context (parent data is
 copied first):
 
 ```html
+<!-- resources/views/layouts/app.cal.html -->
 @include("partials.alert", {"type": "success", "message": message})
 ```
 
@@ -28,6 +30,7 @@ Optional data dicts work the same way as `@include` (second arg for
 `@includeIf`, third for when/unless).
 
 ```html
+<!-- resources/views/layouts/app.cal.html -->
 @includeIf("partials.banner")
 @includeWhen(user, "partials.account", {"user": user})
 @includeUnless(preview, "partials.footer")
@@ -36,6 +39,7 @@ Optional data dicts work the same way as `@include` (second arg for
 ## Rendering collections with `@each`
 
 ```html
+<!-- resources/views/welcome.cal.html -->
 @each("partials.job", jobs, "job")
 @each("partials.job", jobs, "job", "partials.no-jobs")
 ```

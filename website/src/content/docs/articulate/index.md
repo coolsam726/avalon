@@ -8,6 +8,7 @@ Avalon includes **Articulate**, its Active Record ORM. Each database table has a
 Every persistence and read method is **`await`ed** — Avalon is async-first for ASGI.
 
 ```python
+# app/models/flight.py
 from avalon.orm import Model, relation
 
 class Flight(Model):
@@ -35,6 +36,7 @@ python grail make:model Flight -m
 By convention, the "snake case", plural name of the class is used as the table name — unless another name is explicitly specified. So `Flight` stores records in `flights`, and `BlogPost` in `blog_posts`. Override with:
 
 ```python
+# app/models/flight.py
 class Flight(Model):
     table = "my_flights"
 ```
@@ -50,6 +52,7 @@ By default, Articulate expects `created_at` and `updated_at` columns. Set `times
 ## Retrieving models
 
 ```python
+# app/http/controllers/example_controller.py
 await Flight.all()
 await Flight.query().where("active", True).order_by("name").get()
 await Flight.find(1)
@@ -62,6 +65,7 @@ await Flight.where("name", "Aurora").first()
 ## Inserting and updating
 
 ```python
+# app/http/controllers/example_controller.py
 flight = await Flight.create(name="Aurora", airline_id=1)
 flight.name = "Northern Lights"
 await flight.save()
@@ -78,6 +82,7 @@ Models are guarded by default (`guarded = ("*",)`). List attributes in `fillable
 ## Casts
 
 ```python
+# app/models/user.py
 class User(Model):
     fillable = ("email", "name", "votes")
     casts = {"votes": "int", "active": "bool", "meta": "json"}
@@ -89,6 +94,7 @@ Known cast names: `int`, `float`, `string`, `bool`, `decimal[:scale]`, `json` / 
 ### Accessors and mutators
 
 ```python
+# app/models/user.py
 def get_display_attribute(self, value=None) -> str:
     return f"{self.name} <{self.email}>"
 

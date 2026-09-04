@@ -55,6 +55,9 @@ def scaffold_app(name: str, destination: Path | None = None) -> Path:
         "config/__init__.py": "",
         "config/app.py": _config_app(display),
         "config/http.py": _config_http(),
+        "config/session.py": _config_session(),
+        "config/auth.py": _config_auth(),
+        "config/hashing.py": _config_hashing(),
         "config/database.py": _config_database(),
         "app/models/__init__.py": "",
         "database/__init__.py": "",
@@ -121,6 +124,7 @@ APP_DEBUG=true
 APP_URL=http://127.0.0.1:3000
 # Public path prefix when hosted under a subpath, e.g. /apps/{display.lower()}
 APP_BASE_PATH=
+APP_KEY=base64:local-dev-key-change-me
 APP_LOCALE=en
 APP_FALLBACK_LOCALE=en
 DB_CONNECTION=sqlite
@@ -190,9 +194,28 @@ def configure_middleware(middleware: Middleware) -> None:
     # Behind a load balancer / ingress (from avalon.http import HEADER_X_FORWARDED_ALL):
     # middleware.trust_proxies(at="*", headers=HEADER_X_FORWARDED_ALL)
     # middleware.trust_hosts(at=["example.com", "*.example.com"])
-    middleware.alias({{"locale": SetLocaleMiddleware}})
-    middleware.web(append=["locale"])
-    middleware.api(append=["locale"])
+    from avalon.auth import Authenticate, AuthenticateWithBasicAuth, RedirectIfAuthenticated, RequirePassword
+    from avalon.auth.middleware import StartAuth
+    from avalon.session import EncryptCookies, StartSession, VerifyCsrfToken
+
+    middleware.alias(
+        {{
+            "locale": SetLocaleMiddleware,
+            "cookies.encrypt": EncryptCookies,
+            "session.start": StartSession,
+            "csrf": VerifyCsrfToken,
+            "auth.start": StartAuth,
+            "auth": Authenticate,
+            "guest": RedirectIfAuthenticated,
+            "password.confirm": RequirePassword,
+            "auth.basic": AuthenticateWithBasicAuth,
+        }}
+    )
+    middleware.web(
+        prepend=["cookies.encrypt", "session.start", "csrf", "auth.start"],
+        append=["locale"],
+    )
+    middleware.api(prepend=["auth.start"], append=["locale"])
 
 
 application = (
@@ -215,12 +238,89 @@ config = {{
     "debug": env("APP_DEBUG", True),
     "url": env("APP_URL", "http://127.0.0.1:3000"),
     "base_path": env("APP_BASE_PATH", ""),
+    "key": env("APP_KEY", "base64:local-dev-key-change-me"),
     "locale": env("APP_LOCALE", "en"),
     "fallback_locale": env("APP_FALLBACK_LOCALE", "en"),
     "providers": [
         "app.providers.app_service_provider.AppServiceProvider",
     ],
 }}
+'''
+
+
+def _config_session() -> str:
+    return '''"""Session configuration."""
+
+from avalon.config import env
+
+config = {
+    "driver": env("SESSION_DRIVER", "cookie"),
+    "lifetime": int(env("SESSION_LIFETIME", 120) or 120),
+    "cookie": env("SESSION_COOKIE", "avalon_session"),
+    "path": env("SESSION_PATH", "/"),
+    "secure": env("SESSION_SECURE_COOKIE", False),
+}
+'''
+
+
+def _config_auth() -> str:
+    return '''"""Authentication defaults — guards, providers, password brokers."""
+
+from avalon.config import env
+
+config = {
+    "defaults": {
+        "guard": env("AUTH_GUARD", "web"),
+        "passwords": env("AUTH_PASSWORD_BROKER", "users"),
+    },
+    "guards": {
+        "web": {
+            "driver": "session",
+            "provider": "users",
+        },
+        "api": {
+            "driver": "token",
+            "provider": "users",
+            "input_key": "api_token",
+            "storage_key": "api_token",
+        },
+    },
+    "providers": {
+        "users": {
+            "driver": "articulate",
+            "model": "app.models.user.User",
+        },
+    },
+    "passwords": {
+        "users": {
+            "provider": "users",
+            "table": "password_reset_tokens",
+            "expire": 60,
+            "throttle": 60,
+        },
+    },
+    "password_timeout": 10800,
+}
+'''
+
+
+def _config_hashing() -> str:
+    return '''"""Password hashing configuration."""
+
+from avalon.config import env
+
+config = {
+    "driver": env("HASH_DRIVER", "bcrypt"),
+    "bcrypt": {
+        "rounds": int(env("BCRYPT_ROUNDS", 12) or 12),
+    },
+    "argon2": {
+        "memory": int(env("ARGON_MEMORY", 65536) or 65536),
+        "threads": int(env("ARGON_THREADS", 1) or 1),
+        "time": int(env("ARGON_TIME", 4) or 4),
+    },
+    "rehash_on_login": True,
+}
 '''
 
 

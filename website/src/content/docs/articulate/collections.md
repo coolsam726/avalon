@@ -6,6 +6,7 @@ description: Work with Articulate collections returned from queries.
 All multi-result sets returned by Articulate are instances of `avalon.orm.Collection`, including results retrieved via the `get` method or accessed via a relationship. The Articulate collection object extends Python list semantics and provides many helpful methods for working with your results.
 
 ```python
+# app/http/controllers/example_controller.py
 from avalon.orm import Collection
 
 users = await User.query().order_by("id").get()
