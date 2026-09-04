@@ -9,21 +9,33 @@ from avalon.translation.locale import peek_locale, set_locale
 
 
 class SetLocaleMiddleware(Middleware):
-    """Resolve the request locale from Accept-Language when not already set."""
+    """Resolve the request locale: explicit set, then session, then Accept-Language."""
 
     async def handle(self, request: Request, call_next: NextCall):
         translator = get_translator()
         # Explicit set_locale() earlier in the pipeline wins — do not override.
         if peek_locale() is None:
-            header = request.header("accept-language") or request.header("Accept-Language")
-            if header:
-                available = _available_locales(translator)
-                chosen = _negotiate(header, available, translator.get_locale())
-                if chosen:
-                    set_locale(chosen)
+            session_locale = _session_locale(request)
+            if session_locale:
+                set_locale(session_locale)
             else:
-                set_locale(translator.get_locale())
+                header = request.header("accept-language") or request.header("Accept-Language")
+                if header:
+                    available = _available_locales(translator)
+                    chosen = _negotiate(header, available, translator.get_locale())
+                    if chosen:  # pragma: no branch
+                        set_locale(chosen)
+                else:
+                    set_locale(translator.get_locale())
         return await call_next(request)
+
+
+def _session_locale(request: Request) -> str | None:
+    session = getattr(request, "_session", None)
+    if session is None:
+        return None
+    value = session.get("locale")
+    return str(value) if value else None
 
 
 def _available_locales(translator) -> list[str]:

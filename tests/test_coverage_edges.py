@@ -20,7 +20,10 @@ def test_stub_packages_importable() -> None:
     assert "__" in avalon.translation.__all__
     assert "Model" in avalon.orm.__all__
     assert "QueryBuilder" in avalon.orm.__all__
-    assert avalon.auth.__all__ == []
+    assert "AuthManager" in avalon.auth.__all__
+    assert "Authenticate" in avalon.auth.__all__
+    assert "Password" in avalon.auth.__all__
+    assert "auth" in avalon.auth.__all__
     assert "Engine" in avalon.caliburn.__all__
     assert "view" in avalon.caliburn.__all__
     assert "Controller" in avalon.http.__all__

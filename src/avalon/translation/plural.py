@@ -82,7 +82,7 @@ def _split_segments(line: str) -> list[tuple[int | None, int | None, Any, str]]:
     result: list[tuple[int | None, int | None, Any, str]] = []
     for part in parts:
         match = _SEGMENT_RE.match(part)
-        if not match:
+        if not match:  # pragma: no cover - pattern always matches via (.*)
             result.append((None, None, None, part))
             continue
         exact, start, end, text = match.groups()

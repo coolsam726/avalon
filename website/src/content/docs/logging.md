@@ -1,22 +1,32 @@
 ---
 title: Logging
-description: Application logging arrives with the exception handler in M8.
+description: Log channels and the log() helper — wired to the exception Handler.
 ---
 
-:::caution[Not shipped yet]
-There is no `config/logging.py` or `log()` helper in framework core yet. **M8** ships logging together with the exception `Handler` so `report()` has a real destination.
-:::
+## Configuration
 
-## Planned shape (M8)
+`config/logging.py` declares the default channel and named drivers:
 
-- `config/logging.py` with channels (`stack`, `single`, `daily`, `stderr`)
-- Levels and context; `log()` helper
-- Exception `report()` writes through the logger
-- Console (M9) reuses the same handler for uncaught command errors
+| Driver | Role |
+| --- | --- |
+| `stack` | Fan-out to other channel names |
+| `single` | One file under `storage/logs/` |
+| `daily` | Timed rotating file |
+| `stderr` | Stream to stderr |
+| `null` | Discard (tests) |
 
-## Until then
+```python
+from avalon.log import log
 
-Use Python's `logging` module in application code if you need diagnostics, or wait for M8 for the Laravel-shaped façade.
+log().info("Application started")
+log("stderr").warning("Something odd")
+log().with_(request_id="abc", user_id=7).info("Checked out")
+log().with_context({"job": "mail"}).error("Failed")
+```
+
+## Exception reporting
+
+`Handler.report()` writes through the logger. Client `HttpException` responses (`status < 500`) are not reported by default; 5xx and unhandled exceptions are.
 
 ## Related
 

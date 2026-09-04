@@ -3,6 +3,9 @@
 @section('title', 'Avalon — Progress')
 
 @section('content')
+  @isset(status)
+    <p class="flash flash-status" role="status">{{ status }}</p>
+  @endisset
   <section class="hero">
     <img
       class="hero-logo"
@@ -17,6 +20,11 @@
       Laravel-shaped Python framework. This living example is built end-to-end with
       Caliburn — layouts, components, stacks, and subpath-aware <code>asset()</code>.
     </p>
+    @auth
+      <p class="auth-pill">Signed in as {{ auth_user['name'] }} ({{ auth_user['email'] }})</p>
+    @else
+      <p class="auth-pill auth-pill-guest">Browsing as guest — session + CSRF are live on <code>web</code>.</p>
+    @endauth
     <div class="cta-row">
       @component('button', {'href': board_url, 'variant': 'primary'})
         Milestone board
@@ -24,6 +32,11 @@
       @component('button', {'href': showcase_url, 'variant': 'ghost'})
         Caliburn showcase
       @endcomponent
+      @guest
+        @component('button', {'href': login_url, 'variant': 'ghost'})
+          Sign in
+        @endcomponent
+      @endguest
     </div>
   </section>
 

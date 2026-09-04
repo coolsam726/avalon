@@ -331,7 +331,7 @@ async def test_pagination_and_collection(memory_db) -> None:
     payload = page.to_dict()
     assert payload["last_page"] == 3
     names = Collection([user.name for user in await User.query().order_by("id").get()])
-    assert names.filter(lambda n: n.endswith("1")).all() == ["U1"]
+    assert names.filter(lambda n: n.endswith("1")).values().all() == ["U1"]
 
 
 async def test_unloaded_relation_fails_loudly(memory_db) -> None:

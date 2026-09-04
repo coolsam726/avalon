@@ -14,6 +14,11 @@
       <li><a href="{{ url('/progress', absolute=False) }}">Milestones</a></li>
       <li><a href="{{ url('/showcase', absolute=False) }}">Caliburn</a></li>
       <li><a href="{{ url('/api/orm', absolute=False) }}">ORM API</a></li>
+      @auth
+        <li><a href="{{ url('/logout', absolute=False) }}">Sign out</a></li>
+      @else
+        <li><a href="{{ url('/login', absolute=False) }}">Sign in</a></li>
+      @endauth
     </ul>
     <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle color theme"></button>
   </div>

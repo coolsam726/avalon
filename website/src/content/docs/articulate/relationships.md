@@ -8,6 +8,7 @@ Database tables are often related to one another. For example, a blog post may h
 Declare relationships with `@relation`. Calling the method (`user.posts()`) returns the relation object so you can keep querying. Reading the attribute (`user.posts`) returns **already loaded** data only.
 
 ```python
+# app/models/user.py
 from avalon.orm import Model, relation, RelationNotLoadedError
 
 class User(Model):
@@ -60,6 +61,7 @@ Belongs-to-many: `attach`, `detach`, `sync`, `toggle`, `update_existing_pivot`, 
 ## Eager loading
 
 ```python
+# app/http/controllers/example_controller.py
 posts = await Post.query().with_("author").get()
 posts[0].author.name
 
@@ -80,6 +82,7 @@ await users.load("posts")   # Collection
 ### Querying relationship existence
 
 ```python
+# app/http/controllers/example_controller.py
 await User.query().has("posts", ">=", 2).get()
 await User.query().doesnt_have("posts").get()
 await User.query().where_has(
@@ -93,6 +96,7 @@ await User.query().where_doesnt_have("posts").get()
 When a related model uses soft deletes, put the mixin **before** `Model` so the global scope registers correctly:
 
 ```python
+# app/models/post.py
 class Post(SoftDeletes, Model):
     ...
 ```

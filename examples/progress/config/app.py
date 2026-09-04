@@ -8,6 +8,7 @@ config = {
     "debug": env("APP_DEBUG", True),
     "url": env("APP_URL", "http://127.0.0.1:3000"),
     "base_path": env("APP_BASE_PATH", ""),
+    "key": env("APP_KEY", "base64:progress-local-dev-key-change-me"),
     "locale": env("APP_LOCALE", "en"),
     "fallback_locale": env("APP_FALLBACK_LOCALE", "en"),
     "providers": [

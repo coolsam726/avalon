@@ -11,11 +11,11 @@ Push fragments from a child view; flush them in the layout (usually **after**
 `@yield` so pushes from sections are visible):
 
 ```html
-{{-- layout --}}
+<!-- resources/views/layouts/app.cal.html -->
 @yield("content")
 @stack("scripts")
 
-{{-- page --}}
+<!-- resources/views/home.cal.html -->
 @push("scripts")
   <script src="{{ asset('app.js') }}"></script>
 @endpush
@@ -31,6 +31,7 @@ Push fragments from a child view; flush them in the layout (usually **after**
 ## Framework stubs
 
 ```html
+<!-- resources/views/auth/login.cal.html -->
 @csrf
 @asset("css/app.css")
 
@@ -50,6 +51,7 @@ receives the expression inside the parentheses (or `""`) and returns Python
 source lines to emit into the compiled render function:
 
 ```python
+# app/providers/view_service_provider.py
 engine.directive(
     "datetime",
     lambda expr: f"__w(__e(str(__eval({expr!r}))))",
@@ -57,12 +59,14 @@ engine.directive(
 ```
 
 ```html
+<!-- resources/views/welcome.cal.html -->
 @datetime(now.isoformat())
 ```
 
 ## Composers, creators, and fragment cache
 
 ```python
+# app/providers/view_service_provider.py
 engine.composer("profile.*", lambda ctx: ctx.setdefault("title", "Profile"))
 engine.creator(["dashboard", "dashboard.*"], seed_once)
 

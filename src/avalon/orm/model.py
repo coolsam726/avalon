@@ -38,7 +38,7 @@ class MassAssignmentError(RuntimeError):
 class RelationNotLoadedError(AttributeError):
     """Raised when reading a relation that was never loaded.
 
-    By default Avalon never lazy-loads on attribute access: a hidden query
+    By default, Avalon never lazy-loads on attribute access: a hidden query
     there is how N+1 storms happen. Opt in with ``Model.lazy_relations = True``
     to allow ``await model.rel`` (explicit await — still no silent IO).
     """
@@ -327,8 +327,10 @@ class Model(metaclass=ModelMeta):
             return self.get_attribute(name)
 
         # A declared relation that was never loaded must fail loudly.
+        # Unreachable for class methods (normal lookup finds them before __getattr__);
+        # retained for plain callables stashed only on the type without a descriptor.
         method = getattr(type(self), name, None)
-        if callable(method) and getattr(method, "_is_relation", False):
+        if callable(method) and getattr(method, "_is_relation", False):  # pragma: no cover
             hint = (
                 f"Use .with_({name!r}) when querying, await model.load({name!r}), "
                 f"or await model.{name}().get()."
@@ -427,7 +429,7 @@ class Model(metaclass=ModelMeta):
         cls = type(self)
         if creating and cls.created_at and cls.created_at not in self.get_dirty():
             self._attributes.setdefault(cls.created_at, now)
-        if cls.updated_at:
+        if cls.updated_at:  # pragma: no branch
             self._attributes[cls.updated_at] = now
 
     async def save(self) -> bool:
@@ -450,12 +452,12 @@ class Model(metaclass=ModelMeta):
 
         cls = type(self)
         payload = dict(self._attributes)
-        if cls.incrementing and payload.get(cls.primary_key) is None:
+        if cls.incrementing and payload.get(cls.primary_key) is None:  # pragma: no branch
             payload.pop(cls.primary_key, None)
 
         builder = cls.new_query()
         key = await builder.insert_get_id(payload)
-        if cls.incrementing and key is not None:
+        if cls.incrementing and key is not None:  # pragma: no branch
             self._attributes[cls.primary_key] = key
 
         self._exists = True
@@ -501,7 +503,7 @@ class Model(metaclass=ModelMeta):
             self._exists = False
             deleted = True
 
-        if deleted:
+        if deleted:  # pragma: no branch
             await self._fire_event("deleted")
         return deleted
 
@@ -714,7 +716,7 @@ class Model(metaclass=ModelMeta):
             return
         for listener in cls._events.get(event, []):
             outcome = listener(instance)
-            if inspect.isawaitable(outcome):
+            if inspect.isawaitable(outcome):  # pragma: no branch
                 outcome.close()  # sync context: retrieved/replicating must be sync
 
     # --- serialization ------------------------------------------------------

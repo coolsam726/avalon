@@ -1,24 +1,53 @@
 ---
 title: CSRF Protection
-description: Cross-site request forgery protection arrives with sessions in M7.
+description: Verify mutating web requests with a session-backed CSRF token.
 ---
 
-:::caution[Not shipped yet]
-Real CSRF tokens require a **session** store. Avalon reserves the `web` middleware group for session + CSRF (M7). Caliburn already accepts an `@csrf` directive **stub** for templates; it does not mint or verify tokens until M7 wires sessions.
-:::
+Stateful `web` routes mint a CSRF token in the session and reject unsafe methods
+when the token is missing or wrong. API routes stay **stateless** — use bearer
+tokens instead of CSRF.
 
-## Planned shape (M7)
+## How it works
 
-- Session-backed token on stateful `web` routes
-- Verify mutating requests (`POST` / `PUT` / `PATCH` / `DELETE`)
-- Caliburn `@csrf` emits a hidden `_token` field from the live session
-- API routes under `routes/api.py` stay **stateless** — no CSRF (token/bearer auth instead)
+1. `StartSession` loads the signed (and encrypted) session cookie
+2. `VerifyCsrfToken` ensures `_csrf_token` exists and checks mutating requests
+3. Caliburn `@csrf` emits a hidden `_token` field from `csrf_token`
 
-## Until then
+Accepted sources for the token:
 
-- Do not treat `@csrf` output as security
-- Prefer API + bearer tokens for machine clients
-- Keep browser forms on `web` routes ready to adopt M7 middleware without restructuring
+- Form field `_token` (from `@csrf`)
+- Header `X-CSRF-TOKEN`
+- Header `X-XSRF-TOKEN`
+
+Mismatch raises **419** (`TokenMismatchError`).
+
+## Caliburn
+
+```html
+<!-- resources/views/auth/login.cal.html -->
+<form method="post" action="/login">
+  @csrf
+  <input name="email" type="email">
+  <button type="submit">Sign in</button>
+</form>
+```
+
+`AuthServiceProvider` shares `csrf_token` into every view so `@csrf` works without
+manual wiring.
+
+## Middleware group
+
+Register on the `web` stack (scaffold default):
+
+```python
+# bootstrap/app.py
+middleware.web(
+    prepend=["cookies.encrypt", "session.start", "csrf", "auth.start"],
+    append=["locale"],
+)
+```
+
+Do **not** put `csrf` on the `api` group.
 
 ## Related
 

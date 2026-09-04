@@ -1,23 +1,64 @@
 ---
 title: Error Handling
-description: How Avalon turns exceptions into HTTP responses today — and what M8 adds.
+description: Exception Handler, polarity-aware pages, APP_DEBUG, and publishable error views.
 ---
 
-## Today (M2 floor)
+## Handler
 
-Unhandled `HttpException` subclasses are converted **inside** the middleware pipeline so route middleware can still decorate the response.
+Unhandled exceptions pass through `avalon.exceptions.Handler` — `report(exc)` for logging, `render(request, exc)` for the HTTP response. Apps override at `app/exceptions/handler.py` (resolved from the container).
 
-API (and JSON) clients receive the locked envelope:
+```python
+# app/exceptions/handler.py
+from avalon.exceptions import Handler as ExceptionHandler
 
-```json
-{
-  "message": "Not found.",
-  "status": 404,
-  "errors": null
-}
+class Handler(ExceptionHandler):
+    dont_report: list[type[BaseException]] = []
 ```
 
-Common types from `avalon.http.exceptions`:
+## Polarity (not `Accept`)
+
+| Route group | Response |
+| --- | --- |
+| `web` | HTML error page (or debug page when `APP_DEBUG`) |
+| `api` | Locked JSON envelope `{message, status, errors?}` |
+
+A web route that sends `Accept: application/json` still gets HTML. Put JSON clients on `api` routes.
+
+**Unmatched routes** (no registered action): path convention — `/api/…` → JSON 404, everything else → HTML `errors/404`. Registered routes still use middleware-group polarity.
+
+## Status mapping
+
+Domain exceptions map to HTTP statuses before render. Built-ins include:
+
+| Exception | Status |
+| --- | --- |
+| `ModelNotFoundError` | 404 |
+| `ViewNotFoundError` | 404 |
+| `ItemNotFoundError` | 404 |
+| `TokenMismatchError` | 419 |
+| `ServiceUnavailableHttpException` | 503 |
+
+Extend at runtime with `register_status(MyError, 422)`.
+
+## Debug vs production
+
+The security gate is **`APP_DEBUG` only** (not `APP_ENV`):
+
+- `APP_DEBUG=true` (web) — rich debug page with traceback and source excerpts
+- `APP_DEBUG=false` (web) — `resources/views/errors/{status}.cal.html`
+- Api — always JSON; debug only expands `message`, never embeds a stack trace
+
+## Publishable views
+
+```bash
+python grail errors:publish
+python grail errors:publish --bundle=tailwind
+python grail errors:publish --bundle=bootstrap --force
+```
+
+Bundles: `default` (plain CSS), `tailwind`, `bootstrap`. `avalon new` ships the default set under `resources/views/errors/` (`404`, `419`, `429`, `500`, `503`).
+
+## HttpException classes
 
 | Class | Status |
 | --- | --- |
@@ -28,31 +69,12 @@ Common types from `avalon.http.exceptions`:
 | `MethodNotAllowedHttpException` | 405 |
 | `UnprocessableEntityHttpException` | 422 |
 | `TooManyRequestsHttpException` | 429 |
+| `ServiceUnavailableHttpException` | 503 |
 
-Validation uses `ValidationException` (422 with `errors`). Authorization failures on FormRequest use **403**.
-
-```python
-from avalon.http.exceptions import NotFoundHttpException
-
-raise NotFoundHttpException("Post not found.")
-```
-
-Web routes may still see a minimal HTML body for some failures until the full handler layer lands.
-
-## Coming in M8
-
-Milestone **M8** adds a real exception **Handler**:
-
-- `report()` / `render()` split, `dont_report`, hooks
-- Polarity-aware pages: HTML for `web`, JSON envelope for `api`
-- `APP_DEBUG` debug page with traceback context
-- `resources/views/errors/{status}.cal.html` overrides
-- Logging integration (see [Logging](/logging/))
-
-Do not treat today's conversion as a finished Laravel-parity error stack — it is the safe floor the later handler extends without breaking the JSON contract.
+Validation uses `ValidationException` (422 with `errors`). Default production copy lives in `lang/en/errors.py` (`errors.not_found`, …). Conversion still happens **inside** the middleware pipeline so route middleware can decorate error responses.
 
 ## Related
 
+- [Logging](/logging/)
 - [Validation](/validation/)
 - [Responses](/responses/)
-- [Logging](/logging/)

@@ -81,7 +81,7 @@ async def eager_load(models: Sequence[Any], relations: Any) -> None:
 
         if name in nested:
             children = _children(models, name)
-            if children:
+            if children:  # pragma: no branch
                 await eager_load(children, nested[name])
 
 

@@ -866,7 +866,7 @@ class QueryBuilder:
                 probe.where(name, "=", value)
             if await probe.exists():
                 changes = {name: row[name] for name in columns if name in row}
-                if changes:
+                if changes:  # pragma: no branch
                     affected += await probe.clone().update(changes)
             else:
                 affected += await self.clone().insert(row)

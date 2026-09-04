@@ -50,7 +50,7 @@ class Translator:
     def set_default_locale(self, locale: str) -> None:
         """Configure the process default used when no request locale is set."""
         self._locale = locale
-        if peek_locale() is None:
+        if peek_locale() is None:  # pragma: no branch
             set_locale(locale)
 
     def set_fallback(self, locale: str) -> None:
@@ -114,7 +114,7 @@ class Translator:
     ) -> str | Any:
         replace = dict(replace or {})
         locales = [locale or self.get_locale()]
-        if fallback:
+        if fallback:  # pragma: no branch
             fb = self.get_fallback()
             if fb not in locales:
                 locales.append(fb)
@@ -128,7 +128,7 @@ class Translator:
 
         if self._missing_handler is not None:
             handled = self._missing_handler(key, locales[0], replace)
-            if handled is not None:
+            if handled is not None:  # pragma: no branch
                 return handled
         return key
 

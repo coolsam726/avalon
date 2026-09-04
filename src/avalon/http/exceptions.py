@@ -26,13 +26,11 @@ class HttpException(Exception):
         self.headers = headers or {}
 
     def to_dict(self) -> dict[str, Any]:
-        payload: dict[str, Any] = {
+        return {
             "message": self.message,
             "status": self.status_code,
+            "errors": dict(self.errors),
         }
-        if self.errors:
-            payload["errors"] = self.errors
-        return payload
 
 
 class BadRequestHttpException(HttpException):
@@ -61,3 +59,7 @@ class UnprocessableEntityHttpException(HttpException):
 
 class TooManyRequestsHttpException(HttpException):
     status_code = 429
+
+
+class ServiceUnavailableHttpException(HttpException):
+    status_code = 503

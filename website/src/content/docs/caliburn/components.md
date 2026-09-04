@@ -10,7 +10,7 @@ description: "Blade-style components, named slots, attribute bags, @props, @awar
 Place templates under `resources/views/components/`:
 
 ```html
-{{-- components/alert.cal.html --}}
+<!-- resources/views/components/alert.cal.html -->
 @props({"type": "info"})
 <div class="alert alert-{{ type }}" {{ attributes }}>
   {{ slot }}
@@ -27,18 +27,21 @@ python grail make:component forms/input --class
 ### Class tag syntax
 
 ```html
+<!-- resources/views/welcome.cal.html -->
 <x-alert type="success">Saved.</x-alert>
 ```
 
 Dynamic attributes use Blade-shaped bindings:
 
 ```html
+<!-- resources/views/welcome.cal.html -->
 <x-link :href="board_url">Board</x-link>
 ```
 
 ### Directive syntax
 
 ```html
+<!-- resources/views/welcome.cal.html -->
 @component("alert", {"type": "success"})
   Saved.
 @endcomponent
@@ -47,6 +50,7 @@ Dynamic attributes use Blade-shaped bindings:
 ## Named slots
 
 ```html
+<!-- resources/views/welcome.cal.html -->
 @component("card")
   @slot("title")
     Hello
@@ -58,6 +62,7 @@ Dynamic attributes use Blade-shaped bindings:
 Or with tag syntax:
 
 ```html
+<!-- resources/views/welcome.cal.html -->
 <x-card>
   <x-slot:title>Hello</x-slot>
   Body copy
@@ -66,7 +71,7 @@ Or with tag syntax:
 ```
 
 ```html
-{{-- components/card.cal.html --}}
+<!-- resources/views/components/card.cal.html -->
 <h2>{{ title }}</h2>
 <div>{{ slot }}</div>
 @if('footer' in slots)
@@ -81,6 +86,7 @@ Slot HTML is safe (not double-escaped) when echoed with `{{ slot }}`.
 `<x-*>` tags nest. Innermost tags expand first:
 
 ```html
+<!-- resources/views/welcome.cal.html -->
 <x-card>Hi <x-badge>new</x-badge></x-card>
 ```
 
@@ -89,13 +95,13 @@ Slot HTML is safe (not double-escaped) when echoed with `{{ slot }}`.
 Child components can pull data from the parent component scope:
 
 ```html
-{{-- components/form.cal.html --}}
+<!-- resources/views/components/form.cal.html -->
 @props({"method": "post"})
 <form method="{{ method }}">{{ slot }}</form>
 ```
 
 ```html
-{{-- components/input.cal.html --}}
+<!-- resources/views/components/input.cal.html -->
 @aware(["method"])
 @props({"name": "field"})
 <input name="{{ name }}" data-method="{{ method }}">

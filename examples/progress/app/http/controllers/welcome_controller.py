@@ -18,6 +18,8 @@ _API_LINKS = [
     {"href": "/api/bag", "label": "full Request input surface"},
     {"href": "/api/di", "label": "container injection into an action"},
     {"href": "/api/boom", "label": "HttpException JSON shape"},
+    {"href": "/api/explode", "label": "M8 unhandled → JSON envelope"},
+    {"href": "/boom", "label": "M8 unhandled → HTML (debug/production)"},
 ]
 
 _FEATURES = [
@@ -28,6 +30,10 @@ _FEATURES = [
     {
         "title": "Articulate ORM",
         "body": "Eager loading, soft deletes, morphs, and grail migrate — async by default.",
+    },
+    {
+        "title": "Session + CSRF",
+        "body": "Signed cookie sessions, EncryptCookies, and @csrf on the web group.",
     },
     {
         "title": "Web vs API",
@@ -51,7 +57,19 @@ class WelcomeController(Controller):
                 "env": config("app.env", "local"),
                 "board_url": url("/progress", absolute=False),
                 "showcase_url": url("/showcase", absolute=False),
+                "login_url": url("/login", absolute=False),
                 "features": _FEATURES,
                 "api_links": links,
             },
         )
+
+    async def settings(self) -> Response:
+        return view(
+            "auth.settings",
+            {
+                "home_url": url("/", absolute=False),
+            },
+        )
+
+    async def boom(self) -> Response:
+        raise RuntimeError("Intentional demo failure")

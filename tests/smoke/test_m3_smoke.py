@@ -177,6 +177,10 @@ def test_m3_s4_progress_example_validation_loop(monkeypatch: pytest.MonkeyPatch)
             headers={"x-demo-forbid": "1"},
         )
         assert denied.status_code == 403
-        assert denied.json() == {"message": "This action is unauthorized.", "status": 403}
+        assert denied.json() == {
+            "message": "This action is unauthorized.",
+            "status": 403,
+            "errors": {},
+        }
     finally:
         purge_generated_app_modules()

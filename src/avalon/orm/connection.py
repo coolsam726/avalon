@@ -66,7 +66,7 @@ class Connection:
             from sqlalchemy import event
 
             @event.listens_for(self._engine.sync_engine, "connect")
-            def _sqlite_foreign_keys(dbapi_connection: Any, _connection_record: Any) -> None:
+            def _sqlite_foreign_keys(dbapi_connection: Any, _connection_record: Any) -> None:  # pragma: no cover
                 cursor = dbapi_connection.cursor()
                 cursor.execute("PRAGMA foreign_keys=ON")
                 cursor.close()

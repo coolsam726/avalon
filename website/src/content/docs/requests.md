@@ -10,6 +10,7 @@ Avalon's `Request` is a Laravel-shaped façade over the ASGI request. Applicatio
 Inject `Request` into a controller action (or use a [`FormRequest`](/validation/), which proxies to the same bag):
 
 ```python
+# app/http/controllers/demo_controller.py
 from avalon.http import Controller, Request
 
 
@@ -37,6 +38,7 @@ class DemoController(Controller):
 | `boolean` / `integer` / `float` / `string` | Coercion helpers |
 
 ```python
+# app/http/controllers/demo_controller.py
 request.input("email")
 request.query("page", 1)
 request.route("post")
@@ -46,6 +48,7 @@ request.merge({"source": "demo"})
 ## Headers, cookies, and client metadata
 
 ```python
+# app/http/controllers/demo_controller.py
 request.header("Accept")
 request.cookie("theme")
 request.bearer_token()
@@ -58,6 +61,7 @@ request.is_method("POST")
 ## Files
 
 ```python
+# app/http/controllers/demo_controller.py
 if request.has_file("avatar"):
     upload = request.file("avatar")
     data = await upload.read()

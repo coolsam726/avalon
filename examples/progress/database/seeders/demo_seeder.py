@@ -5,6 +5,7 @@ from __future__ import annotations
 from app.models.post import Post
 from app.models.role import Role
 from app.models.user import User
+from avalon.hashing import Hash
 from avalon.orm import Seeder
 
 
@@ -15,8 +16,18 @@ class DemoSeeder(Seeder):
         if await User.query().count() > 0:
             return
 
-        ada = await User.create(email="ada@avalon.dev", name="Ada")
-        grace = await User.create(email="grace@avalon.dev", name="Grace")
+        password = Hash.make("password")
+        ada = await User.create(
+            email="ada@avalon.dev",
+            name="Ada",
+            password=password,
+            api_token="secret-token",
+        )
+        grace = await User.create(
+            email="grace@avalon.dev",
+            name="Grace",
+            password=password,
+        )
         admin = await Role.create(name="admin")
         editor = await Role.create(name="editor")
         await ada.roles().attach(admin, {"level": "lead"})

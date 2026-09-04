@@ -165,7 +165,7 @@ def test_m2_s3_progress_example_exhausts_http_surface(
         # Error responses still pass back through the route middleware.
         boom = client.get("/api/boom")
         assert boom.status_code == 418
-        assert boom.json() == {"message": "Intentional demo failure", "status": 418}
+        assert boom.json() == {"message": "Intentional demo failure", "status": 418, "errors": {}}
         assert boom.headers.get("x-avalon-demo") == "m2"
 
         missing = client.get("/api/missing")

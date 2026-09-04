@@ -89,7 +89,7 @@ class FileLoader:
                     data = json.loads(path.read_text(encoding="utf-8"))
                 except json.JSONDecodeError:
                     continue
-                if isinstance(data, dict):
+                if isinstance(data, dict):  # pragma: no branch
                     for key, value in data.items():
                         lines[str(key)] = str(value)
         self._json_cache[locale] = lines

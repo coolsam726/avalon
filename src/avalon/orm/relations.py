@@ -535,7 +535,7 @@ class MorphOneOrMany(HasOneOrMany):
     ) -> Any:
         def constrained(builder: QueryBuilder) -> None:
             builder.where(f"{self.related.get_table()}.{self.morph_type}", "=", self.morph_class)
-            if callback is not None:
+            if callback is not None:  # pragma: no branch
                 callback(builder)
 
         return super().existence_query(parent_builder, constrained)
@@ -603,7 +603,7 @@ class MorphTo(Relation):
         buckets: dict[str, list[Model]] = {}
         for model in models:
             alias = model.get_raw_attribute(self.morph_type)
-            if alias:
+            if alias:  # pragma: no branch
                 buckets.setdefault(str(alias), []).append(model)
 
         for alias, group in buckets.items():

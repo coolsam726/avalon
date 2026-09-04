@@ -90,6 +90,8 @@ curl -s -X POST "$BASE/api/items" -H "Content-Type: application/json" -d '{}' | 
 
 # HttpException JSON shape — note middleware headers still apply
 curl -si "$BASE/api/boom" | head -n 20
+curl -si "$BASE/api/explode" | head -n 20
+curl -si "$BASE/boom" | head -n 20
 curl -s "$BASE/api/missing" | python -m json.tool
 
 # match()
@@ -148,10 +150,12 @@ curl -s "$BASE/api/posts/1/comments" | python -m json.tool
 | **M3** | `StoreItemRequest`, 422/403, `url()` + ASGI mount for `APP_BASE_PATH` |
 | **M4** | `/api/locale` in `en` / `sw`; `grail lang:*` |
 | **M5** | `database/migrations` + `/api/orm` tour — migrate/seed, relations, soft deletes, upsert |
+| **M6** | Caliburn views — layouts, components, showcase, `view()` |
+| **M7** | Session + CSRF, `/login`, Hash, `/api/me` bearer auth |
 
 ## Growing with Avalon
 
-M0–M5 are closed. Next is **M6 — Caliburn**.
+M0–M8 are closed. Next is **M9 — Console + scheduler**. Roadmap continues through Mail (M12) and Notifications (M13).
 
 ## CLI
 

@@ -15,3 +15,15 @@ class HealthController(Controller):
             "app": str(config("app.name", "Avalon")),
             "env": str(config("app.env", "local")),
         }
+
+    async def me(self) -> dict:
+        from avalon.auth import auth
+
+        user = auth().user()
+        if user is None:
+            return {"user": None}
+        if hasattr(user, "to_dict"):
+            return {"user": user.to_dict()}
+        if isinstance(user, dict):
+            return {"user": {k: v for k, v in user.items() if k != "password"}}
+        return {"user": {"id": getattr(user, "id", None)}}

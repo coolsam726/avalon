@@ -131,7 +131,11 @@ def test_hooks_authorize_prepare_messages_and_attributes() -> None:
 
     with pytest.raises(ForbiddenHttpException) as denied:
         GuardedRequest.validate_request(_Stub({}))
-    assert denied.value.to_dict() == {"message": "This action is unauthorized.", "status": 403}
+    assert denied.value.to_dict() == {
+        "message": "This action is unauthorized.",
+        "status": 403,
+        "errors": {},
+    }
 
     allowed = {"x-allow": "yes"}
     with pytest.raises(ValidationException) as failed:

@@ -6,7 +6,10 @@ from pathlib import Path
 
 from app.http.middleware.demo_tag_middleware import DemoTagMiddleware
 
+from avalon.auth import Authenticate, AuthenticateWithBasicAuth, RedirectIfAuthenticated, RequirePassword
+from avalon.auth.middleware import StartAuth
 from avalon.framework import Application, Middleware
+from avalon.session import EncryptCookies, StartSession, VerifyCsrfToken
 from avalon.translation import SetLocaleMiddleware
 
 BASE_PATH = Path(__file__).resolve().parent.parent
@@ -20,11 +23,22 @@ def configure_middleware(middleware: Middleware) -> None:
     middleware.alias(
         {
             "locale": SetLocaleMiddleware,
+            "cookies.encrypt": EncryptCookies,
+            "session.start": StartSession,
+            "csrf": VerifyCsrfToken,
+            "auth.start": StartAuth,
+            "auth": Authenticate,
+            "guest": RedirectIfAuthenticated,
+            "password.confirm": RequirePassword,
+            "auth.basic": AuthenticateWithBasicAuth,
             "demo.tag": DemoTagMiddleware,
         }
     )
-    middleware.web(append=["locale"])
-    middleware.api(append=["locale", "demo.tag"])
+    middleware.web(
+        prepend=["cookies.encrypt", "session.start", "csrf", "auth.start"],
+        append=["locale"],
+    )
+    middleware.api(prepend=["auth.start"], append=["locale", "demo.tag"])
 
 
 application = (

@@ -6,6 +6,7 @@ description: Render Caliburn templates with view() and escaped echo.
 # Rendering Views
 
 ```python
+# app/http/controllers/welcome_controller.py
 from avalon.caliburn import view
 
 return view("greeting", {"name": user.name})

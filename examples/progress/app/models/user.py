@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from avalon.auth import AuthenticatableMixin
 from avalon.orm import Model, relation
 
 
-class User(Model):
-    fillable = ("email", "name")
+class User(AuthenticatableMixin, Model):
+    fillable = ("email", "name", "password", "remember_token", "api_token")
+    hidden = ("password", "remember_token")
 
     @relation
     def posts(self):

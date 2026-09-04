@@ -13,3 +13,4 @@ database/*.sqlite-*
 *.egg-info/
 dist/
 build/
+storage/logs/*.log

@@ -252,8 +252,69 @@ python grail db:seed
 
 ---
 
+## M6 — Caliburn
+
+Automated:
+
+```bash
+pytest -q tests/smoke/test_m6_smoke.py
+pytest -q tests/test_m6_*.py
+```
+
+### M6 exit criteria
+
+- [x] Blade-parity Caliburn + progress Caliburn-first
+- [x] Coverage 100% on `avalon.caliburn`; suite ≥ 98%
+- [x] No M7 work until this gate passes
+
+---
+
+## M7 — Auth + session
+
+Automated:
+
+```bash
+pytest -q tests/smoke/test_m7_smoke.py tests/test_m7_session_auth.py tests/test_m7_coverage_fill.py
+make test-cov
+```
+
+Manual (from `examples/progress`):
+
+```bash
+# Browser: open /, Sign in, submit form (CSRF), Sign out
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3000/api/me
+curl -sH 'Authorization: Bearer demo' http://127.0.0.1:3000/api/me
+```
+
+### M7 exit criteria
+
+- [x] Cookie session + EncryptCookies + VerifyCsrfToken on `web`
+- [x] Session + token guards: `attempt` / `login` / `logout` / remember-me Set-Cookie / rehash-on-login
+- [x] `auth` / `auth:guard` / `guest` / `password.confirm` / `auth.basic` / `auth.start`
+- [x] `Hash` (bcrypt + optional argon2id); `Password` broker; auth events; `Request.user()`
+- [x] Caliburn `@csrf` / `@auth` / `@guest` wired via AuthServiceProvider
+- [x] Progress login demo + Authentication / Hashing / Passwords / Session / CSRF docs
+- [x] Coverage ≥ 98%
+- [x] No M8 work until this gate passes (gate now met — M8 unblocked)
+
+---
+
+## M8 — Error handling + logging
+
+- [x] `Handler` report/render + app override; polarity HTML vs JSON (no `Accept` flip)
+- [x] `APP_DEBUG` web debug page gated; api debug widens `message` only
+- [x] Status mapping (`ModelNotFoundError` → 404, …) + `ServiceUnavailableHttpException`
+- [x] Unmatched routes: path polarity (`/api/*` JSON, else HTML 404)
+- [x] `errors:publish` + default/tailwind/bootstrap bundles (CDN-free); production error views
+- [x] `config/logging.py` + `log()` / `with_()` context; `report()` writes through channels
+- [x] Error catalog `lang/en/errors.py`; Caliburn-off HTML fallback
+- [x] Progress `/boom` (HTML) + `/api/explode` (JSON); Error Handling / Logging docs
+- [x] Smoke `tests/smoke/test_m8_smoke.py`; coverage ≥ 98% (exceptions + log aim 100%)
+- [x] No M9 work until this gate passes
+
+---
+
 ## Out of scope until later milestones
 
-- Caliburn, Auth (M6+)
-- Exception handler layer + logging (M8)
 - Console/scheduler, filesystem, queues (M9–M11)
+- Mail + Notifications (M12–M13)

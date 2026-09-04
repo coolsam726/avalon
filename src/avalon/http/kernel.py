@@ -10,10 +10,9 @@ from typing import TYPE_CHECKING, Any, get_type_hints
 
 from fastapi import FastAPI
 from fastapi import Request as FastAPIRequest
-from fastapi.responses import JSONResponse
 from starlette.responses import Response as StarletteResponse
 
-from avalon.http.exceptions import HttpException
+from avalon.http.exceptions import HttpException, NotFoundHttpException
 from avalon.http.middleware import Middleware
 from avalon.http.request import Request
 from avalon.http.response import make_response
@@ -38,6 +37,17 @@ _SKIP_INJECT_TYPES = {
 }
 
 
+def polarity_from_middleware(names: Sequence[Any]) -> str:
+    """Derive route polarity from group names on the route (before expansion)."""
+    for name in names:
+        if name == "api":
+            return "api"
+        if name == "web":
+            return "web"
+    # Preserve M2 JSON floor when polarity is unspecified.
+    return "api"
+
+
 class HttpKernel:
     """Builds the ASGI app from Avalon routes, middleware, and controllers."""
 
@@ -45,6 +55,14 @@ class HttpKernel:
         self.app = app
         self.router = router
         self._asgi: FastAPI | None = None
+
+    def _api_prefix(self) -> str:
+        return str(self.app.config.get("http.api_prefix", "/api") or "/api")
+
+    def _polarity_for_asgi(self, request: FastAPIRequest) -> str:
+        from avalon.exceptions.mapping import polarity_from_path
+
+        return polarity_from_path(request.url.path, api_prefix=self._api_prefix())
 
     def create_asgi(self) -> FastAPI:
         if self._asgi is not None:
@@ -54,20 +72,48 @@ class HttpKernel:
         debug = bool(self.app.config.get("app.debug", False))
         asgi = FastAPI(title=title, debug=debug)
 
+        from starlette.exceptions import HTTPException as StarletteHTTPException
+
+        @asgi.exception_handler(StarletteHTTPException)
+        async def starlette_http_exception_handler(
+            request: FastAPIRequest,
+            exc: StarletteHTTPException,
+        ) -> StarletteResponse:
+            polarity = self._polarity_for_asgi(request)
+            if exc.status_code == 404:
+                avalon_exc: BaseException = NotFoundHttpException(
+                    str(exc.detail) if exc.detail else "Not Found"
+                )
+            elif isinstance(exc.detail, str) and exc.detail:
+                avalon_exc = HttpException(exc.detail, status_code=exc.status_code)
+            else:
+                avalon_exc = HttpException(
+                    "Server Error" if exc.status_code >= 500 else "Error",
+                    status_code=exc.status_code,
+                )
+            return self._handle_exception(request, avalon_exc, polarity=polarity)
+
         @asgi.exception_handler(HttpException)
         async def http_exception_handler(
-            _request: FastAPIRequest,
+            request: FastAPIRequest,
             exc: HttpException,
-        ) -> JSONResponse:
-            return self._exception_response(exc)
+        ) -> StarletteResponse:
+            return self._handle_exception(
+                request,
+                exc,
+                polarity=self._polarity_for_asgi(request),
+            )
 
         @asgi.exception_handler(Exception)
         async def unhandled_exception_handler(
-            _request: FastAPIRequest,
+            request: FastAPIRequest,
             exc: Exception,
-        ) -> JSONResponse:
-            message = (str(exc) or exc.__class__.__name__) if debug else "Server Error"
-            return JSONResponse({"message": message, "status": 500}, status_code=500)
+        ) -> StarletteResponse:
+            return self._handle_exception(
+                request,
+                exc,
+                polarity=self._polarity_for_asgi(request),
+            )
 
         for route in self.router.routes:
             self._register_route(asgi, route)
@@ -104,6 +150,32 @@ class HttpKernel:
         self._asgi = asgi
         return asgi
 
+    def _exception_handler(self):
+        from avalon.exceptions.handler import Handler
+
+        if self.app.container.bound(Handler):
+            return self.app.make(Handler)
+        return Handler(self.app)
+
+    def _handle_exception(
+        self,
+        request: FastAPIRequest | Request,
+        exc: BaseException,
+        *,
+        polarity: str | None = None,
+    ) -> StarletteResponse:
+        handler = self._exception_handler()
+        if isinstance(request, Request):
+            avalon_request = request
+        else:
+            # ASGI-level: minimal Avalon request without full hydrate.
+            avalon_request = Request(request)
+            avalon_request.route_polarity = polarity or "api"
+        if polarity is not None and avalon_request.route_polarity is None:
+            avalon_request.route_polarity = polarity
+        handler.report(exc)
+        return handler.render(avalon_request, exc)
+
     def _register_route(self, asgi: FastAPI, route: RouteDefinition) -> None:
         endpoint = self._build_endpoint(route)
         asgi.add_api_route(
@@ -117,36 +189,38 @@ class HttpKernel:
         self,
         route: RouteDefinition,
     ) -> Callable[..., Awaitable[StarletteResponse]]:
+        polarity = polarity_from_middleware(route.middleware)
+
         async def endpoint(request: FastAPIRequest) -> StarletteResponse:
             avalon_request = await Request.create(request)
-            handler = self._resolve_action(route.action)
+            avalon_request.route_polarity = polarity
+            avalon_request.route_name = route.name
+            action = self._resolve_action(route.action)
 
             async def call_controller(req: Request) -> StarletteResponse:
                 # Convert inside the pipeline so middleware still sees the
                 # response on the way out (Laravel handler placement).
                 try:
-                    result = await self._invoke(handler, req)
-                except HttpException as exc:
-                    return self._exception_response(exc)
+                    result = await self._invoke(action, req)
+                except Exception as exc:
+                    return self._handle_exception(req, exc, polarity=polarity)
                 return make_response(result)
 
-            pipeline = self._build_middleware_pipeline(route.middleware, call_controller)
+            pipeline = self._build_middleware_pipeline(
+                route.middleware,
+                call_controller,
+                polarity=polarity,
+            )
             return await pipeline(avalon_request)
 
         return endpoint
-
-    @staticmethod
-    def _exception_response(exc: HttpException) -> JSONResponse:
-        return JSONResponse(
-            exc.to_dict(),
-            status_code=exc.status_code,
-            headers=exc.headers or None,
-        )
 
     def _build_middleware_pipeline(
         self,
         names: Sequence[str],
         core: Callable[[Request], Awaitable[StarletteResponse]],
+        *,
+        polarity: str = "api",
     ) -> Callable[[Request], Awaitable[StarletteResponse]]:
         aliases = self.app.config.get("http.middleware_aliases", {}) or {}
         groups = self.app.config.get("http.middleware_groups", {}) or {}
@@ -156,7 +230,7 @@ class HttpKernel:
         pipeline = core
         for name in reversed(chain_names):
             middleware = self._resolve_middleware(name, aliases)
-            pipeline = self._wrap_middleware(middleware, pipeline)
+            pipeline = self._wrap_middleware(middleware, pipeline, polarity=polarity)
         return pipeline
 
     def _expand_groups(
@@ -181,14 +255,23 @@ class HttpKernel:
         self,
         middleware: Middleware,
         next_call: Callable[[Request], Awaitable[StarletteResponse]],
+        *,
+        polarity: str = "api",
     ) -> Callable[[Request], Awaitable[StarletteResponse]]:
         async def wrapped(request: Request) -> StarletteResponse:
-            return await middleware.handle(request, next_call)
+            try:
+                return await middleware.handle(request, next_call)
+            except Exception as exc:
+                return self._handle_exception(request, exc, polarity=polarity)
 
         return wrapped
 
     def _resolve_middleware(self, name: str, aliases: dict[str, Any]) -> Middleware:
-        target = aliases.get(name, name)
+        param: str | None = None
+        key = name
+        if isinstance(name, str) and ":" in name:
+            key, _, param = name.partition(":")
+        target = aliases.get(key, key)
         if isinstance(target, type):
             cls = target
         elif isinstance(target, str):
@@ -198,7 +281,24 @@ class HttpKernel:
 
         if not isinstance(cls, type) or not issubclass(cls, Middleware):
             raise TypeError(f"{target!r} is not a Middleware subclass")
+        if param is not None:
+            return self._instantiate_parameterized(cls, key, param)
         return self.app.make(cls)
+
+    def _instantiate_parameterized(
+        self,
+        cls: type[Middleware],
+        alias_name: str,
+        param: str,
+    ) -> Middleware:
+        if alias_name in {"auth", "guest"}:
+            return cls(guard=param)  # type: ignore[call-arg]
+        if alias_name in {"auth.basic", "basic"}:
+            return cls(field=param)  # type: ignore[call-arg]
+        try:
+            return cls(param)  # type: ignore[call-arg]
+        except TypeError:
+            return self.app.make(cls)
 
     def _resolve_action(self, action: Action) -> Callable[..., Any]:
         if callable(action) and not isinstance(action, type):

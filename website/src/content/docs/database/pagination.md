@@ -8,6 +8,7 @@ Avalon includes convenient pagination that integrates with the [query builder](/
 ## Paginating query builder results
 
 ```python
+# app/http/controllers/example_controller.py
 page = await User.query().order_by("id").paginate(15, page=2)
 page.items          # Collection of models
 page.total
@@ -24,6 +25,7 @@ page.to_dict()      # {data, current_page, per_page, total, last_page, from, to}
 When you do not need to display the total number of pages — for example, a “Next” link only — use `simple_paginate`:
 
 ```python
+# app/http/controllers/example_controller.py
 simple = await User.query().simple_paginate(15, page=1)
 simple.has_more_pages()
 simple.to_dict()    # {data, current_page, per_page, has_more}

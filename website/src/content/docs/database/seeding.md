@@ -23,6 +23,7 @@ database/
 `avalon new` ships an empty `DatabaseSeeder`. Override `run` and call child seeders:
 
 ```python
+# database/seeders/database_seeder.py
 from avalon.orm import Seeder
 from database.seeders.user_seeder import UserSeeder
 
@@ -35,6 +36,7 @@ class DatabaseSeeder(Seeder):
 ```
 
 ```python
+# database/seeders/user_seeder.py
 class UserSeeder(Seeder):
     async def run(self, count: int = 1) -> None:
         from app.models.user import User
@@ -46,6 +48,7 @@ class UserSeeder(Seeder):
 ## Suppressing model events
 
 ```python
+# database/seeders/quiet_seeder.py
 from avalon.orm import Seeder, WithoutModelEvents
 
 class QuietSeeder(WithoutModelEvents, Seeder):
