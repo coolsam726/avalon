@@ -2,7 +2,7 @@
 
 > **Status:** Binding. This document is the source of truth for architecture and milestones.
 > Change it deliberately (PR / explicit decision), not casually mid-implementation.
-> Last aligned: 2026-09-03 (M5 complete — full Eloquent-parity ORM).
+> Last aligned: 2026-09-04 (M5 complete; docs versions / factories / REPL clarified).
 
 ## Working identity
 
@@ -184,8 +184,8 @@ Sync Eloquent-style calls are **not** offered — a hidden sync bridge under asy
 6. **Collections:** Eloquent-shaped `Collection` returned from every multi-row read
 7. **Scopes & lifecycle:** local scopes, global scopes, soft deletes (`trashed` / `with_trashed` / `only_trashed` / `restore` / `force_delete`), model events + observers
 8. **Pagination:** `paginate` / `simple_paginate` with a JSON-serializable paginator
-9. **Migrations:** Schema builder (`Schema.create` + `Blueprint`) over SQLAlchemy DDL; ordered Python migration files + a `migrations` table (not Alembic revisions); `make:model` (+`-m`), `make:migration` with Laravel TableGuesser name inference (create/update/blank stubs + StudlyCase class from slug), `migrate`, `migrate:rollback`, `migrate:fresh`, `migrate:status`
-10. **Seeders:** `Seeder` with `call` / `call_with` / `call_silent` / `call_once` / `resolve` / invoke; `WithoutModelEvents`; `make:seeder`; `db:seed` / `migrate --seed` / `migrate:fresh --seed` (`--class` / `--seeder`); scaffold `DatabaseSeeder`
+9. **Migrations:** Schema builder (`Schema.create` + `Blueprint`) over SQLAlchemy DDL; ordered Python migration files + a `migrations` table (not Alembic revisions); `make:model` (+`-m`), `make:migration` with Laravel TableGuesser name inference (create/update/blank stubs + StudlyCase class from slug), `migrate`, `migrate:rollback`, `migrate:fresh`, `migrate:status`. **Column modifiers (shipped):** chain on the creation line — `nullable()`, `default(...)`, `unique()`, **`index()`**, `primary()`, `after` / `before` (MySQL/MariaDB), `constrained()` — matching Laravel `$table->string('email')->index()`. Table-level `index([...])` / `unique([...])` also ship.
+10. **Seeders:** `Seeder` with `call` / `call_with` / `call_silent` / `call_once` / `resolve` / invoke; `WithoutModelEvents`; `make:seeder`; `db:seed` / `migrate --seed` / `migrate:fresh --seed` (`--class` / `--seeder`); scaffold `DatabaseSeeder`. **Model factories are deferred** (see Later) — seeders must stay usable without them; factories later feed `DatabaseSeeder` the Laravel way (`User::factory()->count(10)->create()`).
 
 **Rules:**
 
@@ -195,7 +195,19 @@ Sync Eloquent-style calls are **not** offered — a hidden sync bridge under asy
 - Model events must fire for the documented lifecycle, including soft-delete restore.
 - Migrations must round-trip: `migrate` → `migrate:rollback` returns the schema to its prior state.
 
-**Deferred (declared, not M5):** database sessions/queue drivers (M11), model caching, read/write connection splitting, and model factories (follow ORM maturity per scope discipline).
+**Deferred (declared, not M5):** database sessions/queue drivers (M11), model caching, read/write connection splitting, and **model factories** (see Later — explicit follow-on so seeders can grow into factory-backed demos).
+
+## Decision: Documentation site (`website/`)
+
+App-facing docs live in Astro Starlight under [`website/`](../website/). `PLAN.md` / `SMOKE.md` stay contributor contracts in `docs/`.
+
+**Keep in plan (not blocking M6):**
+
+1. **Major-version docs** — publish and switch among major Avalon versions (e.g. `1.x` / `2.x`) from the docs site, Laravel-style. Exact mechanics TBD (Starlight versioning, separate versioned content trees, or a thin version switcher); the requirement is that readers can open docs for the major they run.
+2. **Prologue** — a top-level sidebar group (Laravel “Prologue”) holding **Release Notes / Changelog**, **Upgrade Guide**, and related orientation pages, versioned with the docs set above.
+3. Changelogs and upgrade guides are **first-class docs content**, not only GitHub Releases prose.
+
+Do not invent a second docs engine; extend the Starlight site.
 
 ## Decision: Views — Caliburn
 
@@ -229,7 +241,7 @@ Logic belongs in controllers, view models, and composers. `@python` is an escape
 
 ## Decision: Scope discipline
 
-Bite-sized milestones. **No** queues, notifications, scheduler, or mail until the **HTTP + validation + i18n + ORM + views + auth** core path is boring and tested (through M7). Seeders ship with M5 ORM; factories follow later. Caliburn is its own track after the core gate. Error handling, console, filesystem, and queues are sketched as **M8–M11** so the roadmap is honest — they are not next work.
+Bite-sized milestones. **No** queues, notifications, scheduler, or mail until the **HTTP + validation + i18n + ORM + views + auth** core path is boring and tested (through M7). Seeders ship with M5 ORM; **model factories follow later** (still binding — they are how seeders scale). Caliburn is its own track after the core gate. Error handling, console (incl. a Tinker-class REPL), filesystem, and queues are sketched as **M8–M11** so the roadmap is honest — they are not next work. Multi-version docs + Prologue stay on the docs track (see Documentation site decision).
 
 **Localization is the one deliberate exception to “defer until needed.”** It sits at M4 because retrofitting translations across four message-producing layers costs far more than building them translatable. M4 exhausts **full Laravel localization parity** (not a thin core) — see the localization decision.
 
@@ -555,8 +567,8 @@ Full Eloquent parity — see the ORM decision above for the binding ladder. M5 e
 - All relationship types incl. through + polymorphic; eager loading, `with_count`, `where_has`
 - `Collection` return type; `paginate` / `simple_paginate`
 - Local + global scopes, soft deletes, model events + observers
-- Schema builder over SQLAlchemy DDL; Python migrator (`make:model`, `make:migration` with name inference, `migrate` / `rollback` / `fresh` / `status`) — not Alembic revisions
-- Seeders: `Seeder` call API, `WithoutModelEvents`, `make:seeder`, `db:seed` / `migrate --seed` / `migrate:fresh --seed`, scaffold `DatabaseSeeder`
+- Schema builder over SQLAlchemy DDL; Python migrator (`make:model`, `make:migration` with name inference, `migrate` / `rollback` / `fresh` / `status`) — not Alembic revisions. Column-line modifiers include **`->index()`** / `->unique()` (and table-level `index` / `unique`)
+- Seeders: `Seeder` call API, `WithoutModelEvents`, `make:seeder`, `db:seed` / `migrate --seed` / `migrate:fresh --seed`, scaffold `DatabaseSeeder` (factories deferred — see Later)
 - Living example: `GET /api/orm` feature tour; `/api/posts` / `/api/users` cover eager load, scopes, soft deletes, pivot roles, morph comments, pagination, upsert
 - Feature docs: [`website/…/articulate/`](../website/src/content/docs/articulate/) + [`database/`](../website/src/content/docs/database/)
 
@@ -597,7 +609,7 @@ Turns M2's minimal kernel behavior into a real handler layer. See the decision a
 
 ### M9 — Console + scheduler (`avalon.console`)
 
-Grail today is a thin Typer entry (`version`, `serve`). M9 turns it into a Laravel-shaped **console kernel**.
+Grail today is a thin Typer entry (`version`, `serve`, `make:*`, `migrate`, …). M9 turns it into a Laravel-shaped **console kernel**.
 
 - `Command` base: signature / help / `handle()`, IoC-resolved
 - Command discovery: `app/Console/Commands`, `python grail list`, `python grail make:command`
@@ -607,9 +619,10 @@ Grail today is a thin Typer entry (`version`, `serve`). M9 turns it into a Larav
 - `python grail schedule:run` / `schedule:work` (long-running ticker) suitable for cron or a dedicated process
 - Overlap / mutex for scheduled tasks (filesystem lock is enough until Redis/cache exists)
 - Console-side rendering of uncaught exceptions, wired to the M8 handler
-- Living example: at least one app command + one scheduled task exercised in smoke
+- **Interactive REPL (Tinker-class)** — a user-friendly Python shell with the app booted (container, facades, models, DB). Laravel parallel: `php artisan tinker`. **Product / command name TBD** (Arthurian; not locked — candidates live outside this contract until chosen). Requirements regardless of name: boot `Application` once, rich display (pretty repr / tables), optional `ipython`/`ptpython` when installed with a solid stdlib fallback, no raw “drop into bare `code.interact` and hope.” Ship as `python grail <name>` (or agreed alias).
+- Living example: at least one app command + one scheduled task + a smoke that the REPL boots and can resolve a model / run a trivial query
 
-**Depends on:** solid Application boot (done); M8 for console exception rendering. Does **not** require queues — scheduled closures/commands run in-process; queue integration is M11.
+**Depends on:** solid Application boot (done); M8 for console exception rendering. Does **not** require queues — scheduled closures/commands run in-process; queue integration is M11. The REPL may land with M9 or as a fast follow once the console kernel exists — it must not be forgotten.
 
 ### M10 — Filesystem (`avalon.filesystem`)
 
@@ -640,13 +653,14 @@ FlySystem-shaped **Storage** façade — app code never talks to raw `pathlib` f
 ### Later (still deferred)
 
 - Mail, notifications, broadcasting
-- Model factories (after ORM maturity)
+- **Model factories** (Eloquent/Laravel Factory parity) — `Factory` base, `definition()` / states / sequences, `make:factory`, `Model.factory()`, `create` / `make` / `count` / relationships; primary consumer is **seeders** (`DatabaseSeeder` + demo data). Homes after Articulate is boring in real apps; do not leave seeders as the permanent only way to fake rows.
 - Policies/gates
 - Starter kits (web kit vs API kit reflecting route polarity)
 - Full Caliburn advanced parity (ongoing on M6 track)
 - Router DX sugar: `head`, `redirect`, `fallback`, `route()`, then `resource` / `apiResource`
 - Default security-headers + CORS middleware pack (post-M3 hardening; before or with M7 web stack)
 - Production docs / optional `grail serve --workers`
+- **Docs site:** major-version switching + **Prologue** (changelogs, upgrade guides, release notes) — see Documentation site decision
 - Cache store (needed by schedule overlap upgrades + queue unique locks — introduce when first consumer needs it)
 
 ## Quality bar for “solid core”
