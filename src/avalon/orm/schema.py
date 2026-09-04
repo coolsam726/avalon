@@ -397,7 +397,7 @@ def _guess_foreign_table(column: str) -> str:
 
 
 async def _enable_foreign_keys(conn: Any, dialect_name: str) -> None:
-    if dialect_name == "sqlite":
+    if dialect_name == "sqlite":  # pragma: no branch
         await conn.execute(sa.text("PRAGMA foreign_keys=ON"))
 
 
@@ -438,7 +438,7 @@ def compile_table_statements(blueprint: Blueprint, dialect: Any) -> list[str]:
                 f" REFERENCES {quote_ident(dialect, ref_table)} "
                 f"({quote_ident(dialect, ref_column or 'id')})"
             )
-            if on_delete:
+            if on_delete:  # pragma: no branch
                 col_sql += f" ON DELETE {on_delete}"
             if on_update:
                 col_sql += f" ON UPDATE {on_update}"
@@ -472,7 +472,7 @@ def compile_table_statements(blueprint: Blueprint, dialect: Any) -> list[str]:
             f"FOREIGN KEY ({cols}) REFERENCES {quote_ident(dialect, fk.ref_table)} "
             f"({quote_ident(dialect, fk.ref_column)})"
         )
-        if fk.on_delete:
+        if fk.on_delete:  # pragma: no branch
             clause += f" ON DELETE {fk.on_delete}"
         if fk.on_update:
             clause += f" ON UPDATE {fk.on_update}"

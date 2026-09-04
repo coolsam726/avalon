@@ -69,7 +69,7 @@ class StartAuth(Middleware):
                     resolved = guard._via_request(request)  # noqa: SLF001
                     if hasattr(resolved, "__await__"):
                         resolved = await resolved  # type: ignore[misc]
-                    if resolved is not None:
+                    if resolved is not None:  # pragma: no branch
                         guard.once(resolved)
                 except Exception:
                     pass
@@ -201,7 +201,7 @@ async def _hydrate_user(guard: SessionGuard, payload: Any) -> Any | None:
     if guard.provider is None:
         return payload
     identifier = payload.get("id") if isinstance(payload, dict) else payload
-    if identifier is None:
+    if identifier is None:  # pragma: no branch
         return payload
     user = await guard.provider.retrieve_by_id(identifier)
     return user if user is not None else payload

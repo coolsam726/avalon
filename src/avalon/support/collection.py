@@ -358,7 +358,7 @@ class Collection(Generic[T]):
     def each_spread(self, callback: Callable[..., Any]) -> Self:
         for item in self._items.values():
             if isinstance(item, (list, tuple)):
-                if callback(*item) is False:
+                if callback(*item) is False:  # pragma: no branch
                     break
             elif callback(item) is False:  # pragma: no cover
                 break

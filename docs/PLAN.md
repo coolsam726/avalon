@@ -112,13 +112,13 @@ avalon/
 - `from avalon.translation import __, trans, trans_choice, Number, Lang`
 - `from avalon.orm import Model`
 - later: `from avalon.caliburn import ViewFactory`
-- later: `from avalon.exceptions import Handler`
-- later: `from avalon.log import log`
 - later: `from avalon.console import Command, schedule`
 - later: `from avalon.filesystem import Storage`
 - later: `from avalon.queue import Job, dispatch`
 - later: `from avalon.mail import Mail, Mailable`
 - later: `from avalon.notifications import notify, Notifiable`
+- `from avalon.exceptions import Handler`
+- `from avalon.log import log`
 
 ### Subpackage boundaries
 
@@ -237,8 +237,8 @@ Mirror Laravel’s Basics **order and coverage**. Deep Caliburn how-tos stay in 
 | Hashing | `hashing` | **Shipped (M7)** — bcrypt + optional argon2id | **Done** |
 | Passwords | `passwords` | **Shipped (M7)** — broker + confirm; outbound mail **M12**/**M13** | **Done** |
 | Validation | `validation` | **Shipped (M3)** — `FormRequest` | **Done** |
-| Error Handling | `errors` | **Minimal (M2)**; full handler **M8** | **Done** — thin “today” + M8 roadmap |
-| Logging | `logging` | **M8** | **Placeholder** (honest M8 page) |
+| Error Handling | `errors` | **Shipped (M8)** — Handler, polarity pages, publish | **Done** |
+| Logging | `logging` | **Shipped (M8)** | **Done** |
 
 **Starlight sidebar target for “The Basics”:**
 
@@ -588,17 +588,21 @@ That is the floor. It is deliberately not a handler layer: there is no app-level
 | Split | `report(exc)` — logging/telemetry side; `render(request, exc)` — response side |
 | Suppression | `dont_report` list; `reportable()` / `renderable()` registration hooks |
 | Per-exception hooks | Exception classes may define their own `report()` / `render()` |
-| Negotiation | **Follows route polarity, not `Accept` guessing** — web routes render HTML error pages, api routes render the JSON envelope |
-| Debug page | `APP_DEBUG` only: traceback with source excerpts, request/route/config context; **never** in production |
-| Production pages | `resources/views/errors/{status}.cal.html` with a framework fallback for apps without Caliburn |
+| Negotiation | **Follows route polarity, not `Accept` guessing** — web routes render HTML; api routes render the JSON envelope. A web route that sends `Accept: application/json` still gets HTML; put the route in `api.py` (or return JSON from the controller) if the client needs the envelope |
+| Debug vs production | **Security gate is `APP_DEBUG` only** (not `APP_ENV`). `true` → rich debug page (traceback, source excerpts, request/route context) on **web**; `false` → production error views with a generic safe message. Api always uses the JSON envelope; debug only expands `message` (exception text / class), never dumps stack traces into JSON |
+| Production pages | Resolve order: app `resources/views/errors/{status}.cal.html` → published/custom override → framework fallback (dependency-free HTML if Caliburn is unavailable). Cover at least `404`, `419`, `429`, `500`, `503` |
+| Publish | `python grail errors:publish [--bundle=default\|tailwind\|bootstrap] [--force]` — copies a chosen set into `resources/views/errors/` for customization (Laravel `vendor:publish --tag=laravel-errors`). Scaffold / `avalon new` ships the **default** set; starter kits may pre-select Tailwind or Bootstrap |
+| Bundle variants | Framework ships three **look** bundles under `avalon.exceptions` stubs: `default` (plain CSS, no toolchain), `tailwind`, `bootstrap`. Markup stays Caliburn; CSS/class conventions match the bundle. Core never depends on Node/Tailwind/Bootstrap — kits own compilation; published views assume the kit’s assets when non-default |
 | Status mapping | Table mapping common framework/domain exceptions to HTTP status codes |
-| JSON envelope | `{message, status, errors?}` is a **locked M2 contract** — M8 extends, never breaks it |
+| JSON envelope | `{message, status, errors?}` is a **locked M2 contract** — M8 extends, never breaks it. Unhandled exceptions on api → `500` with that shape; validation stays `422` with `errors` |
 | Logging | `config/logging.py`, channels (`stack`, `single`, `daily`, `stderr`), levels, context; `log()` helper; `report()` writes through it |
 
 **Rules:**
 
-- A debug page that leaks env/secrets in production is a security bug — gate it on `APP_DEBUG` and test the gate
+- A debug page that leaks env/secrets when `APP_DEBUG` is false is a security bug — gate it on `APP_DEBUG` and test the gate (`APP_ENV=production` alone is not enough and must not re-enable the debug page)
 - Do not ship `report()` without a real log destination; half a logging layer is exactly the placeholder this plan forbids
+- Do not reopen M2 polarity for errors: no `Accept`-driven HTML↔JSON flip on the handler path
+- Published error views are app-owned after `errors:publish`; framework fallbacks remain for apps that never publish
 - Console-side exception rendering belongs to **M9** (console), not here
 - Validation failures (M3) use the existing 422 envelope; M3 does **not** open the handler layer
 
@@ -754,13 +758,16 @@ Turns M2's minimal kernel behavior into a real handler layer. See the decision a
 - `Handler` base in `avalon.exceptions`; app override at `app/Exceptions/Handler.py`, resolved from the container
 - `report()` / `render()` split, `dont_report`, `reportable()` / `renderable()` hooks
 - Per-exception `report()` / `render()` methods honored before the handler default
-- **Polarity-aware rendering:** HTML error pages for web routes, the locked JSON envelope for api routes
-- `APP_DEBUG` debug page: traceback, source excerpts, request/route context — with a test proving it is off in production
-- `resources/views/errors/{status}.cal.html` overrides plus a dependency-free framework fallback
+- **Polarity-aware rendering:** HTML for web, locked JSON envelope for api — **no** `Accept` flip
+- `APP_DEBUG` web debug page (traceback, source excerpts, request/route context) with a test proving it is off when debug is false; api debug only widens `message`, never embeds a stack trace in JSON
+- Production error views: `resources/views/errors/{status}.cal.html` + framework fallback; statuses at least `404` / `419` / `429` / `500` / `503`
+- `python grail errors:publish [--bundle=default|tailwind|bootstrap] [--force]`; `avalon new` ships **default**; Tailwind/Bootstrap sets for kits / opt-in publish
 - Logging slice: `config/logging.py`, channels (`stack`, `single`, `daily`, `stderr`), levels, context, `log()` helper
 - Living example: a deliberate failure on a web route rendering HTML, the same failure on an api route rendering JSON
 
 **Depends on:** M2 route polarity (done) and M6 Caliburn for error views. Do not start before M6 — HTML error pages without a view engine is exactly the placeholder trap.
+
+**Status (M8):** Ladder shipped — `Handler` (`report`/`render`, hooks, `dont_report`); polarity-aware HTML vs JSON; unmatched-route path polarity; status mapping (`ModelNotFoundError` → 404, …); `APP_DEBUG` web debug page; production `errors/{status}` views + framework / Caliburn-off fallbacks; `errors:publish` (`default`/`tailwind`/`bootstrap`, CDN-free); `avalon.log` channels + `log().with_()` context; `lang/en/errors.py`; `ServiceUnavailableHttpException`; scaffold + progress `/boom` + `/api/explode`; smoke + Error Handling / Logging docs.
 
 ### M9 — Console + scheduler (`avalon.console`)
 
@@ -892,6 +899,6 @@ FlySystem-shaped **Storage** façade — app code never talks to raw `pathlib` f
 
 ## Next implementation focus
 
-**M7 auth gate met** — Authentication + Hashing + Passwords ladder exhausted (see M7 status). **Next: M8** error handling + logging when ready. Roadmap through **M13** now includes Mail (M12) and Notifications (M13) after queues.
+**M8 error-handling gate met** — Handler + logging + publishable error views exhausted (see M8 status). **Next: M9** console + scheduler when ready. Roadmap through **M13** includes Mail (M12) and Notifications (M13) after queues.
 
-**Docs:** Authentication / Hashing / Passwords how-tos published (Session + CSRF in Basics).
+**Docs:** Error Handling / Logging how-tos published.

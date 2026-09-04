@@ -92,7 +92,7 @@ def test_web_serves_html_and_api_serves_json(
     # HttpException converts inside the pipeline, so middleware still sees it.
     missing = client.get("/api/missing")
     assert missing.status_code == 404
-    assert missing.json() == {"message": "Nope", "status": 404}
+    assert missing.json() == {"message": "Nope", "status": 404, "errors": {}}
     assert missing.headers["x-stamp"] == "api"
 
 

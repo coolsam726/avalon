@@ -18,6 +18,7 @@ import typer
 import uvicorn
 
 from avalon import __version__
+from avalon.exceptions.publish import BUNDLES, ErrorsPublishError, publish_errors
 from avalon.grail.lang_cmd import LangError, make_lang, missing_keys, publish_lang
 from avalon.grail.make import MakeError, make, make_component
 from avalon.orm.inflector import table_name
@@ -347,6 +348,28 @@ def lang_publish(
         typer.secho(str(exc), fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1) from exc
     typer.secho(f"Language files published: {path.relative_to(Path.cwd())}", fg=typer.colors.GREEN)
+
+
+@app.command("errors:publish")
+def errors_publish(
+    bundle: str = typer.Option(
+        "default",
+        "--bundle",
+        "-b",
+        help=f"View look: {', '.join(BUNDLES)}",
+    ),
+    force: bool = typer.Option(False, "--force", help="Overwrite existing published files"),
+) -> None:
+    """Publish framework error views into resources/views/errors/."""
+    try:
+        path = publish_errors(Path.cwd(), bundle=bundle, force=force)
+    except ErrorsPublishError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+    typer.secho(
+        f"Error views published ({bundle}): {path.relative_to(Path.cwd())}",
+        fg=typer.colors.GREEN,
+    )
 
 
 @app.command("lang:missing")
