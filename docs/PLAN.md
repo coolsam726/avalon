@@ -201,13 +201,58 @@ Sync Eloquent-style calls are **not** offered — a hidden sync bridge under asy
 
 App-facing docs live in Astro Starlight under [`website/`](../website/). `PLAN.md` / `SMOKE.md` stay contributor contracts in `docs/`.
 
-**Keep in plan (not blocking M6):**
+**Keep in plan (not blocking product milestones forever, but Basics is blocking before M7 code):**
 
 1. **Major-version docs** — publish and switch among major Avalon versions (e.g. `1.x` / `2.x`) from the docs site, Laravel-style. Exact mechanics TBD (Starlight versioning, separate versioned content trees, or a thin version switcher); the requirement is that readers can open docs for the major they run.
 2. **Prologue** — a top-level sidebar group (Laravel “Prologue”) holding **Release Notes / Changelog**, **Upgrade Guide**, and related orientation pages, versioned with the docs set above.
 3. Changelogs and upgrade guides are **first-class docs content**, not only GitHub Releases prose.
+4. **The Basics** — Laravel’s “The Basics” sidebar is the reader’s mental map of the HTTP stack. Avalon must mirror that map (Avalon names where they differ). Empty Basics (only Middleware) is a **docs bug**, not a product gap for most of those topics.
 
 Do not invent a second docs engine; extend the Starlight site.
+
+### The Basics — Laravel map → Avalon (binding)
+
+Mirror Laravel’s Basics **order and coverage**. Deep Caliburn how-tos stay in the **Caliburn** sidebar (like Laravel’s separate Blade section); Basics **Views** is the short entry + pointer.
+
+| Laravel Basics | Avalon docs slug (target) | Code status | Docs action |
+| --- | --- | --- | --- |
+| Routing | `routing` | **Shipped (M2)** — `Route` DSL, groups, polarity | **Done** |
+| Middleware | `middleware` | **Shipped (M2)** | **Done** |
+| CSRF Protection | `csrf` | **M7** — Caliburn `@csrf` stub only | **Placeholder** (honest M7 page) |
+| Controllers | `controllers` | **Shipped (M2/M3)** — base `Controller`, `make:controller`, DI | **Done** |
+| Requests | `requests` | **Shipped (M2)** — `Request` bag | **Done** |
+| Responses | `responses` | **Shipped (M2)** — `Response`, `html()`, JSON polarity | **Done** |
+| Views | `views` | **Shipped (M6)** — `view()` / `ViewFactory` | **Done** — overview + link to Caliburn |
+| Blade Templates | *(Caliburn section)* | **Shipped (M6)** | **Done** as Caliburn group (not duplicated under Basics) |
+| Asset Bundling | `assets` | **Partial (M6)** — `asset()` / `@asset` + `public/` on `grail serve`; Vite/Tailwind = **starter kits** | **Done** — honest “no Vite in core” page |
+| URL Generation | `urls` | **Partial (M3)** — `url()`, `asset()`, `redirect()`; named `route()` = Later | **Done** |
+| Session | `session` | **M7** | **Placeholder** (honest M7 page) |
+| Validation | `validation` | **Shipped (M3)** — `FormRequest` | **Done** |
+| Error Handling | `errors` | **Minimal (M2)**; full handler **M8** | **Done** — thin “today” + M8 roadmap |
+| Logging | `logging` | **M8** | **Placeholder** (honest M8 page) |
+
+**Starlight sidebar target for “The Basics”:**
+
+```
+The Basics
+  Routing
+  Middleware          # existing
+  CSRF Protection     # M7 (placeholder OK until then)
+  Controllers
+  Requests
+  Responses
+  Views
+  Asset Bundling
+  URL Generation
+  Session             # M7
+  Validation
+  Error Handling      # thin now / full M8
+  Logging             # M8
+```
+
+Caliburn remains its own top-level group (Blade equivalent). Do **not** put the full Caliburn tutorial under Basics.
+
+**Gate before starting M7 implementation:** Basics pages for shipped surfaces are published and linked in `website/astro.config.mjs` (**met**). Expand CSRF / Session / Logging placeholders when those milestones land — not fake APIs.
 
 ## Decision: Views — Caliburn
 
@@ -718,6 +763,6 @@ FlySystem-shaped **Storage** façade — app code never talks to raw `pathlib` f
 
 ## Next implementation focus
 
-**M6 Caliburn ladder is exhausted** (includes family, control stubs, framework directives, composers/creators, `@cache`, custom `directive()`, **100%** coverage on `avalon.caliburn`, progress Caliburn-first). Formal M6 close = docs polish + PR. Do **not** pull M7+ into this branch beyond stubs already allowed (`@csrf` / `@auth` / `@guest`).
+**Basics docs debt cleared** — Starlight “The Basics” mirrors Laravel’s map (Routing → Logging), with honest placeholders for CSRF / Session (M7) and Logging (M8).
 
-**Next milestone after close:** M7 auth (sessions, real CSRF, wire `@auth` / `@guest` / `@csrf`).
+**Next:** M7 auth — sessions, real CSRF, wire `@auth` / `@guest` / `@csrf`; replace CSRF/Session placeholder pages with real how-tos as those surfaces ship.

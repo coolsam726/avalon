@@ -77,7 +77,21 @@ export default defineConfig({
 				},
 				{
 					label: 'The Basics',
-					items: [{ label: 'Middleware', slug: 'middleware' }],
+					items: [
+						{ label: 'Routing', slug: 'routing' },
+						{ label: 'Middleware', slug: 'middleware' },
+						{ label: 'CSRF Protection', slug: 'csrf' },
+						{ label: 'Controllers', slug: 'controllers' },
+						{ label: 'Requests', slug: 'requests' },
+						{ label: 'Responses', slug: 'responses' },
+						{ label: 'Views', slug: 'views' },
+						{ label: 'Asset Bundling', slug: 'assets' },
+						{ label: 'URL Generation', slug: 'urls' },
+						{ label: 'Session', slug: 'session' },
+						{ label: 'Validation', slug: 'validation' },
+						{ label: 'Error Handling', slug: 'errors' },
+						{ label: 'Logging', slug: 'logging' },
+					],
 				},
 				{
 					label: 'Database',
