@@ -32,7 +32,7 @@ lint:
 	$(PYTHON) -m ruff check src tests
 
 docs:
-	cd website && npm run dev
+	cd website && (npx astro dev stop >/dev/null 2>&1 || true) && npm run dev
 
 docs-build:
 	cd website && npm run build
