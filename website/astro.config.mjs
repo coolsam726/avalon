@@ -66,10 +66,25 @@ export default defineConfig({
 						crossorigin: true,
 					},
 				},
+				{
+					// After Starlight restores session open-state, keep only the
+					// group that contains the current page expanded.
+					tag: 'script',
+					content: `
+document.addEventListener('DOMContentLoaded', () => {
+  const sidebar = document.getElementById('starlight__sidebar');
+  if (!sidebar) return;
+  for (const details of sidebar.querySelectorAll('details')) {
+    details.open = Boolean(details.querySelector('[aria-current="page"]'));
+  }
+});
+`,
+				},
 			],
 			sidebar: [
 				{
 					label: 'Getting Started',
+					collapsed: true,
 					items: [
 						{ label: 'Installation', slug: 'installation' },
 						{ label: 'Directory Structure', slug: 'structure' },
@@ -77,6 +92,7 @@ export default defineConfig({
 				},
 				{
 					label: 'The Basics',
+					collapsed: true,
 					items: [
 						{ label: 'Routing', slug: 'routing' },
 						{ label: 'Middleware', slug: 'middleware' },
@@ -95,6 +111,7 @@ export default defineConfig({
 				},
 				{
 					label: 'Database',
+					collapsed: true,
 					items: [
 						{ label: 'Getting Started', slug: 'database' },
 						{ label: 'Query Builder', slug: 'database/queries' },
@@ -105,6 +122,7 @@ export default defineConfig({
 				},
 				{
 					label: 'Caliburn',
+					collapsed: true,
 					items: [
 						{ label: 'Getting Started', slug: 'caliburn' },
 						{ label: 'Rendering Views', slug: 'caliburn/rendering' },
@@ -117,6 +135,7 @@ export default defineConfig({
 				},
 				{
 					label: 'Articulate',
+					collapsed: true,
 					items: [
 						{ label: 'Getting Started', slug: 'articulate' },
 						{ label: 'Relationships', slug: 'articulate/relationships' },
