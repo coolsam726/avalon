@@ -269,7 +269,10 @@ class TokenGuard(Guard):
     async def set_user_from_request_token(self, token: str | None) -> Any | None:
         if not token or self.provider is None:
             return None
-        user = await self.provider.retrieve_by_credentials({self.storage_key: token})
+        try:
+            user = await self.provider.retrieve_by_credentials({self.storage_key: token})
+        except Exception:
+            return None
         if user is None:
             return None
         self.once(user)

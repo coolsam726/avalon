@@ -47,11 +47,11 @@ class StartAuth(Middleware):
             if isinstance(guard, SessionGuard) and session is not None:
                 payload = session.get(f"login_{guard.name}")
                 if payload is not None:
-                    user = await _hydrate_user(guard, payload)
+                    user = await _safe_resolve(lambda: _hydrate_user(guard, payload))
                     if user is not None:
                         guard.once(user)
                 else:
-                    remembered = await _from_remember_cookie(request, guard)
+                    remembered = await _safe_resolve(lambda: _from_remember_cookie(request, guard))
                     if remembered is not None:
                         guard.once(remembered)
                         guard._via_remember = True  # noqa: SLF001
@@ -61,13 +61,18 @@ class StartAuth(Middleware):
                 query_token = request.query(guard.input_key)
                 token = bearer or (str(query_token) if query_token else None)
                 if token:
-                    await guard.set_user_from_request_token(token)
+                    # Soft-fail: missing schema / provider errors must not 500 public routes
+                    # that happen to send Authorization (M2 demo Bearer on /api/items/…).
+                    await _safe_resolve(lambda: guard.set_user_from_request_token(token))
             if guard._via_request is not None and guard.guest():  # noqa: SLF001
-                resolved = guard._via_request(request)  # noqa: SLF001
-                if hasattr(resolved, "__await__"):
-                    resolved = await resolved  # type: ignore[misc]
-                if resolved is not None:
-                    guard.once(resolved)
+                try:
+                    resolved = guard._via_request(request)  # noqa: SLF001
+                    if hasattr(resolved, "__await__"):
+                        resolved = await resolved  # type: ignore[misc]
+                    if resolved is not None:
+                        guard.once(resolved)
+                except Exception:
+                    pass
 
         request._auth = manager  # noqa: SLF001
         token = set_auth(manager)
@@ -182,6 +187,14 @@ async def _unauthenticated(request: Request) -> StarletteResponse:
         intended = f"{request.path}?{query}"
     store_intended_url(intended)
     return redirect("/login")
+
+
+async def _safe_resolve(factory) -> Any | None:
+    """Run an auth lookup; treat provider/DB failures as unauthenticated."""
+    try:
+        return await factory()
+    except Exception:
+        return None
 
 
 async def _hydrate_user(guard: SessionGuard, payload: Any) -> Any | None:

@@ -822,3 +822,53 @@ def test_one_more_line() -> None:
     set_repository(repo)
     # config repository line 32
     assert not repo.has("nope")
+
+
+@pytest.mark.asyncio
+async def test_auth_hydration_soft_fails_provider_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Bearer / session hydration must not 500 when the provider raises (missing table)."""
+
+    class BoomProvider:
+        async def retrieve_by_credentials(self, credentials):
+            raise RuntimeError("no such table: users")
+
+        async def retrieve_by_id(self, identifier):
+            raise RuntimeError("no such table: users")
+
+        async def retrieve_by_token(self, identifier, token):
+            raise RuntimeError("no such table: users")
+
+    assert await TokenGuard("api", BoomProvider()).set_user_from_request_token("x") is None
+
+    from avalon.auth.middleware import _from_remember_cookie, _hydrate_user, _safe_resolve
+
+    guard = SessionGuard("web", BoomProvider())
+    assert await _safe_resolve(lambda: _hydrate_user(guard, {"id": 1})) is None
+
+    request = _req()
+    request._cookies = {"remember_web": "1|tok"}  # noqa: SLF001
+    assert await _safe_resolve(lambda: _from_remember_cookie(request, guard)) is None
+
+    def boom_resolve(self, name: str):
+        return BoomProvider()
+
+    monkeypatch.setattr(AuthManager, "_resolve_provider", boom_resolve)
+    repo = ConfigRepository()
+    repo.set(
+        "auth.guards",
+        {
+            "web": {"driver": "session", "provider": "users"},
+            "api": {"driver": "token", "provider": "users"},
+        },
+    )
+    set_repository(repo)
+
+    request = _req("/api/items/42", headers=[(b"authorization", b"Bearer secret")])
+    request._session = Session({"login_web": {"id": 1}})  # noqa: SLF001
+    set_session(request._session)  # noqa: SLF001
+
+    async def ok(_req):
+        return Response(content=b"ok", status_code=200)
+
+    response = await StartAuth().handle(request, ok)
+    assert response.status_code == 200

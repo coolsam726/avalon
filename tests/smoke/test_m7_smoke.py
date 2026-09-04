@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import importlib
 import re
 from pathlib import Path
@@ -17,12 +18,18 @@ PROGRESS = Path(__file__).resolve().parents[2] / "examples" / "progress"
 
 
 @pytest.fixture()
-def progress_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
+def progress_client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
     without_base_path(monkeypatch)
     purge_generated_app_modules()
     monkeypatch.chdir(PROGRESS)
     monkeypatch.syspath_prepend(str(PROGRESS))
+    monkeypatch.setenv("DB_CONNECTION", "sqlite")
+    monkeypatch.setenv("DB_DATABASE", str(tmp_path / "m7_smoke.sqlite"))
+    monkeypatch.setenv("APP_KEY", "base64:progress-m7-smoke-key")
     module = importlib.import_module("bootstrap.app")
+    from app.support.demo_db import ensure_demo_database
+
+    asyncio.run(ensure_demo_database())
     return TestClient(module.asgi)
 
 
