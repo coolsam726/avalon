@@ -4,8 +4,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi.responses import JSONResponse, PlainTextResponse, Response
+from fastapi.responses import (
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    RedirectResponse,
+    Response,
+)
 from starlette.responses import Response as StarletteResponse
+
+__all__ = ["Response", "html", "json", "make_response", "redirect"]
 
 
 def make_response(
@@ -40,3 +48,28 @@ def json(
     headers: dict[str, str] | None = None,
 ) -> JSONResponse:
     return JSONResponse(data, status_code=status, headers=headers)
+
+
+def html(
+    content: str,
+    *,
+    status: int = 200,
+    headers: dict[str, str] | None = None,
+) -> HTMLResponse:
+    """Return an HTML response — the web-route counterpart to :func:`json`.
+
+    Until Caliburn (M5) provides ``view()``, web controllers build markup here.
+    """
+    return HTMLResponse(content, status_code=status, headers=headers)
+
+
+def redirect(
+    to: str,
+    *,
+    status: int = 302,
+    headers: dict[str, str] | None = None,
+) -> RedirectResponse:
+    """Redirect to `to`, resolved through `APP_URL` / `APP_BASE_PATH`."""
+    from avalon.routing.url import url
+
+    return RedirectResponse(url(to, absolute=False), status_code=status, headers=headers)

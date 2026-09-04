@@ -21,7 +21,7 @@ def test_avalon_new_creates_app(tmp_path: Path) -> None:
     root = tmp_path / "demo_app"
     assert (root / "grail").is_file()
     assert (root / "bootstrap" / "app.py").is_file()
-    assert (root / "app" / "Http" / "Controllers" / "WelcomeController.py").is_file()
+    assert (root / "app" / "http" / "controllers" / "welcome_controller.py").is_file()
     assert "Created Avalon application" in result.stdout
 
 

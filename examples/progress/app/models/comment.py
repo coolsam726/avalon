@@ -1,0 +1,17 @@
+"""Comment — polymorphic child (post or user)."""
+
+from __future__ import annotations
+
+from avalon.orm import Model, relation
+
+
+class Comment(Model):
+    timestamps = False
+    fillable = ("body", "commentable_id", "commentable_type")
+
+    @relation
+    def commentable(self):
+        from app.models.post import Post
+        from app.models.user import User
+
+        return self.morph_to("commentable", {"Post": Post, "User": User})

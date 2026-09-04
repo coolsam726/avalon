@@ -1,0 +1,65 @@
+---
+title: Soft Deletes & Events
+description: Soft delete models, define query scopes, and listen for model lifecycle events.
+---
+
+## Query scopes
+
+### Local scopes
+
+Local scopes allow you to define common sets of query constraints for reuse. Name the method `scope_<name>`. The **query is the first argument** (like Laravel's `scopeXxx($query)`):
+
+```python
+class Post(Model):
+    def scope_published(query):
+        return query.where("published", True)
+
+await Post.query().published().get()
+```
+
+Also accepted: `scope_published(cls, query)` as a classmethod, or `(self, query)` style. Returning a builder is optional — mutating `query` in place is fine.
+
+### Global scopes
+
+```python
+User.add_global_scope("active", lambda query: query.where("active", True))
+await User.without_global_scope("active").get()
+await User.without_global_scopes().get()
+```
+
+## Soft deleting
+
+In addition to actually removing records from your database, Articulate can "soft delete" models. Soft deletes do not remove the row; they set a `deleted_at` timestamp.
+
+```python
+from avalon.orm import Model, SoftDeletes
+
+class Post(SoftDeletes, Model):   # mixin before Model
+    fillable = ("title",)
+
+await post.delete()               # sets deleted_at
+await Post.query().get()          # excludes trashed
+await Post.with_trashed().get()
+await Post.only_trashed().get()
+post.trashed()
+await post.restore()
+await post.force_delete()         # hard DELETE
+```
+
+Add `table.soft_deletes()` on your migration blueprint.
+
+## Events
+
+Articulate models dispatch several events, allowing you to hook into the following moments: `retrieved`, `creating`, `created`, `updating`, `updated`, `saving`, `saved`, `deleting`, `deleted`, `restoring`, `restored`, and `replicating`.
+
+```python
+Post.listen("creating", lambda model: ...)
+
+class PostObserver:
+    def created(self, model):
+        ...
+
+Post.observe(PostObserver)
+```
+
+A listener that returns `False` aborts that lifecycle step (`save` / `delete` / `restore`). Async listeners are awaited on the async path. `retrieved` and `replicating` fire in a sync context — do not pass async callbacks there.

@@ -131,11 +131,11 @@ def test_container_autowire_and_cycle() -> None:
 
 
 def test_application_bootstrap(tmp_path: Path, monkeypatch) -> None:
-    providers = tmp_path / "app" / "Providers"
+    providers = tmp_path / "app" / "providers"
     providers.mkdir(parents=True)
     (tmp_path / "app" / "__init__.py").write_text("", encoding="utf-8")
     (providers / "__init__.py").write_text("", encoding="utf-8")
-    (providers / "TrackingProvider.py").write_text(
+    (providers / "tracking_provider.py").write_text(
         """
 from avalon.providers import ServiceProvider
 
@@ -162,7 +162,7 @@ from avalon.config import env
 config = {
     "name": env("APP_NAME", "Fallback"),
     "debug": env("APP_DEBUG", True),
-    "providers": ["app.Providers.TrackingProvider.TrackingProvider"],
+    "providers": ["app.providers.tracking_provider.TrackingProvider"],
 }
 """,
         encoding="utf-8",
@@ -194,7 +194,7 @@ config = {
     # Foundation is always registered once; duplicate string entry is skipped.
     assert len(app._providers) == count + 1  # noqa: SLF001
 
-    from app.Providers.TrackingProvider import TrackingProvider
+    from app.providers.tracking_provider import TrackingProvider
 
     assert TrackingProvider.registered is True
     assert TrackingProvider.booted is True

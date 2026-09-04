@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import sys
 
+import pytest
+
 
 def purge_generated_app_modules() -> None:
     """Drop scaffolded ``app`` / ``bootstrap`` modules between tests."""
@@ -12,3 +14,8 @@ def purge_generated_app_modules() -> None:
             "app."
         ):
             del sys.modules[key]
+
+
+def without_base_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Force site-root hosting so progress/scaffold smokes hit unprefixed paths."""
+    monkeypatch.setenv("APP_BASE_PATH", "")

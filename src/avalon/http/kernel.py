@@ -17,9 +17,24 @@ from avalon.http.middleware import Middleware
 from avalon.http.request import Request
 from avalon.http.response import make_response
 from avalon.routing.router import Action, RouteDefinition, Router
+from avalon.validation.form_request import FormRequest
 
 if TYPE_CHECKING:
     from avalon.framework.application import Application
+
+_SKIP_INJECT_TYPES = {
+    str,
+    int,
+    float,
+    bool,
+    bytes,
+    dict,
+    list,
+    tuple,
+    set,
+    type(None),
+    Any,
+}
 
 
 class HttpKernel:
@@ -43,11 +58,7 @@ class HttpKernel:
             _request: FastAPIRequest,
             exc: HttpException,
         ) -> JSONResponse:
-            return JSONResponse(
-                exc.to_dict(),
-                status_code=exc.status_code,
-                headers=exc.headers or None,
-            )
+            return self._exception_response(exc)
 
         @asgi.exception_handler(Exception)
         async def unhandled_exception_handler(
@@ -59,6 +70,20 @@ class HttpKernel:
 
         for route in self.router.routes:
             self._register_route(asgi, route)
+
+        from avalon.http.subpath import mount_asgi
+
+        asgi = mount_asgi(asgi, str(self.app.config.get("app.base_path", "") or ""))
+
+        trusted = self.app.config.get("http.trusted_proxies")
+        if trusted is not None and trusted != []:
+            from avalon.http.trust import HEADER_X_FORWARDED_ALL, TrustProxiesASGI
+
+            headers = int(
+                self.app.config.get("http.trusted_headers", HEADER_X_FORWARDED_ALL)
+                or HEADER_X_FORWARDED_ALL
+            )
+            asgi = TrustProxiesASGI(asgi, proxies=trusted, headers=headers)  # type: ignore[assignment]
 
         self._asgi = asgi
         return asgi
@@ -77,11 +102,16 @@ class HttpKernel:
         route: RouteDefinition,
     ) -> Callable[..., Awaitable[StarletteResponse]]:
         async def endpoint(request: FastAPIRequest) -> StarletteResponse:
-            avalon_request = Request(request)
+            avalon_request = await Request.create(request)
             handler = self._resolve_action(route.action)
 
             async def call_controller(req: Request) -> StarletteResponse:
-                result = await self._invoke(handler, req)
+                # Convert inside the pipeline so middleware still sees the
+                # response on the way out (Laravel handler placement).
+                try:
+                    result = await self._invoke(handler, req)
+                except HttpException as exc:
+                    return self._exception_response(exc)
                 return make_response(result)
 
             pipeline = self._build_middleware_pipeline(route.middleware, call_controller)
@@ -89,20 +119,47 @@ class HttpKernel:
 
         return endpoint
 
+    @staticmethod
+    def _exception_response(exc: HttpException) -> JSONResponse:
+        return JSONResponse(
+            exc.to_dict(),
+            status_code=exc.status_code,
+            headers=exc.headers or None,
+        )
+
     def _build_middleware_pipeline(
         self,
         names: Sequence[str],
         core: Callable[[Request], Awaitable[StarletteResponse]],
     ) -> Callable[[Request], Awaitable[StarletteResponse]]:
         aliases = self.app.config.get("http.middleware_aliases", {}) or {}
+        groups = self.app.config.get("http.middleware_groups", {}) or {}
         global_middleware = list(self.app.config.get("http.middleware", []) or [])
-        chain_names = [*global_middleware, *names]
+        chain_names = self._expand_groups([*global_middleware, *names], groups)
 
         pipeline = core
         for name in reversed(chain_names):
             middleware = self._resolve_middleware(name, aliases)
             pipeline = self._wrap_middleware(middleware, pipeline)
         return pipeline
+
+    def _expand_groups(
+        self,
+        names: Sequence[Any],
+        groups: dict[str, Any],
+        seen: frozenset[str] = frozenset(),
+    ) -> list[Any]:
+        """Flatten middleware group names (``web`` / ``api``) into their members."""
+        expanded: list[Any] = []
+        for name in names:
+            if not isinstance(name, str) or name not in groups:
+                expanded.append(name)
+                continue
+            if name in seen:
+                raise RuntimeError(f"Circular middleware group reference: {name!r}")
+            members = list(groups.get(name) or [])
+            expanded.extend(self._expand_groups(members, groups, seen | {name}))
+        return expanded
 
     def _wrap_middleware(
         self,
@@ -167,11 +224,27 @@ class HttpKernel:
 
         kwargs: dict[str, Any] = {}
         for name, param in signature.parameters.items():
+            if name == "self":
+                continue
             annotation = hints.get(name, param.annotation)
-            if annotation is Request or name in {"request", "req"}:
+            if isinstance(annotation, type) and issubclass(annotation, FormRequest):
+                kwargs[name] = annotation.validate_request(request)
+            elif annotation is Request or name in {"request", "req"}:
                 kwargs[name] = request
             elif name in request.path_params:
                 kwargs[name] = request.path_params[name]
+            elif (
+                annotation is not inspect.Parameter.empty
+                and isinstance(annotation, type)
+                and annotation not in _SKIP_INJECT_TYPES
+            ):
+                kwargs[name] = self.app.make(annotation)
+            elif param.default is not inspect.Parameter.empty:
+                continue
+            else:
+                raise TypeError(
+                    f"Cannot resolve controller parameter {name!r} for {handler!r}"
+                )
 
         result = handler(**kwargs) if kwargs else handler()
         if inspect.isawaitable(result):

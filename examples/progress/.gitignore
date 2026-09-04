@@ -8,6 +8,8 @@ venv/
 .mypy_cache/
 .caliburn_cache/
 storage/framework/views/
+database/*.sqlite
+database/*.sqlite-*
 *.egg-info/
 dist/
 build/

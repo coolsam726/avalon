@@ -53,8 +53,9 @@ def test_m1_s2_welcome_uses_config(tmp_path: Path, monkeypatch: pytest.MonkeyPat
         client = TestClient(module.asgi)
         response = client.get("/")
         assert response.status_code == 200
-        payload = response.json()
-        assert payload["app"] == "ConfigSmoke"
-        assert "Welcome to Avalon" in payload["message"]
+        assert "Welcome to Avalon" in response.text
+        # Web page and API both read app.name from config.
+        assert "ConfigSmoke" in response.text
+        assert client.get("/api/health").json()["app"] == "ConfigSmoke"
     finally:
         purge_generated_app_modules()

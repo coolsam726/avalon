@@ -6,6 +6,8 @@ from avalon.providers import ServiceProvider
 
 
 class AppServiceProvider(ServiceProvider):
+    """Application service provider."""
+
     def register(self) -> None:
         """Bind application services into the container."""
 

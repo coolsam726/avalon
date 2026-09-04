@@ -18,6 +18,11 @@ import typer
 import uvicorn
 
 from avalon import __version__
+from avalon.grail.lang_cmd import LangError, make_lang, missing_keys, publish_lang
+from avalon.grail.make import MakeError, make
+from avalon.orm.inflector import table_name
+from avalon.orm.migration import MigrationError, Migrator, make_migration
+from avalon.orm.seeder import SeederError, resolve_seeder_class, run_seeder
 from avalon.grail.ports import (
     DEFAULT_HOST,
     DEFAULT_PORT,
@@ -44,6 +49,290 @@ def main() -> None:
 def version() -> None:
     """Show Avalon version."""
     typer.echo(f"Avalon {__version__}")
+
+
+def _generate(kind: str, name: str, force: bool) -> None:
+    try:
+        path = make(kind, name, base_path=Path.cwd(), force=force)
+    except MakeError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+    typer.secho(f"{kind.capitalize()} created: {path.relative_to(Path.cwd())}", fg=typer.colors.GREEN)
+
+
+@app.command("make:controller")
+def make_controller(
+    name: str = typer.Argument(..., help="Class name, e.g. PostController or Admin/PostController"),
+    force: bool = typer.Option(False, "--force", help="Overwrite an existing file"),
+) -> None:
+    """Create a controller in app/http/controllers."""
+    _generate("controller", name, force)
+
+
+@app.command("make:middleware")
+def make_middleware(
+    name: str = typer.Argument(..., help="Class name, e.g. EnsureTokenIsValid"),
+    force: bool = typer.Option(False, "--force", help="Overwrite an existing file"),
+) -> None:
+    """Create a middleware in app/http/middleware."""
+    _generate("middleware", name, force)
+
+
+@app.command("make:provider")
+def make_provider(
+    name: str = typer.Argument(..., help="Class name, e.g. RouteServiceProvider"),
+    force: bool = typer.Option(False, "--force", help="Overwrite an existing file"),
+) -> None:
+    """Create a service provider in app/providers."""
+    _generate("provider", name, force)
+
+
+@app.command("make:request")
+def make_request(
+    name: str = typer.Argument(..., help="Class name, e.g. StorePostRequest"),
+    force: bool = typer.Option(False, "--force", help="Overwrite an existing file"),
+) -> None:
+    """Create a FormRequest in app/http/requests."""
+    _generate("request", name, force)
+
+
+@app.command("make:model")
+def make_model(
+    name: str = typer.Argument(..., help="Class name, e.g. Post or Admin/Post"),
+    migration: bool = typer.Option(False, "-m", "--migration", help="Also create a migration"),
+    force: bool = typer.Option(False, "--force", help="Overwrite an existing file"),
+) -> None:
+    """Create a model in app/models."""
+    _generate("model", name, force)
+    if migration:
+        class_name = name.replace("\\", "/").split("/")[-1]
+        path = make_migration(
+            f"create_{table_name(class_name)}_table",
+            Path.cwd() / "database" / "migrations",
+            table=table_name(class_name),
+            create=True,
+        )
+        typer.secho(
+            f"Migration created: {path.relative_to(Path.cwd())}",
+            fg=typer.colors.GREEN,
+        )
+
+
+@app.command("make:migration")
+def make_migration_command(
+    name: str = typer.Argument(
+        ...,
+        help="Slug, e.g. create_posts_table or add_slug_to_posts_table",
+    ),
+    table: str | None = typer.Option(
+        None,
+        "--table",
+        help="Table to alter (overrides name inference)",
+    ),
+    create: str | None = typer.Option(
+        None,
+        "--create",
+        help="Table to create (overrides name inference)",
+    ),
+) -> None:
+    """Create a migration in database/migrations.
+
+    Names like ``create_users_table`` or ``add_x_to_posts_table`` pick the
+    create/update stub and class name automatically (Laravel TableGuesser).
+    """
+    try:
+        path = make_migration(
+            name,
+            Path.cwd() / "database" / "migrations",
+            table=create or table,
+            create=create is not None,
+        )
+    except MigrationError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+    typer.secho(f"Migration created: {path.relative_to(Path.cwd())}", fg=typer.colors.GREEN)
+
+
+@app.command("make:seeder")
+def make_seeder_command(
+    name: str = typer.Argument(..., help="Class name, e.g. UserSeeder"),
+    force: bool = typer.Option(False, "--force", help="Overwrite an existing file"),
+) -> None:
+    """Create a seeder in database/seeders."""
+    _generate("seeder", name, force)
+
+
+def _boot_app():
+    from avalon.framework import Application
+
+    return Application(Path.cwd()).bootstrap()
+
+
+def _boot_migrator() -> Migrator:
+    _boot_app()
+    return Migrator(Path.cwd() / "database" / "migrations")
+
+
+def _run_async(coro):
+    import asyncio
+
+    return asyncio.run(coro)
+
+
+def _seed(
+    *,
+    class_name: str | None = None,
+    app=None,
+) -> None:
+    application = app or _boot_app()
+    target = None
+    if class_name:
+        target = resolve_seeder_class(class_name, base_path=Path.cwd())
+    try:
+        run_seeder(
+            target,
+            base_path=Path.cwd(),
+            container=application.container,
+            command=typer,
+        )
+    except SeederError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+    typer.secho("Database seeding completed successfully.", fg=typer.colors.GREEN)
+
+
+@app.command("db:seed")
+def db_seed(
+    class_name: Optional[str] = typer.Option(
+        None,
+        "--class",
+        help="Seeder class to run (default: DatabaseSeeder)",
+    ),
+) -> None:
+    """Seed the database using DatabaseSeeder (or --class)."""
+    _seed(class_name=class_name)
+
+
+@app.command("migrate")
+def migrate_command(
+    seed: bool = typer.Option(False, "--seed", help="Run DatabaseSeeder after migrating"),
+    seeder: Optional[str] = typer.Option(
+        None,
+        "--seeder",
+        help="Seeder class to run when --seed is set",
+    ),
+) -> None:
+    """Run outstanding migrations."""
+    try:
+        app = _boot_app()
+        applied = _run_async(Migrator(Path.cwd() / "database" / "migrations").run())
+    except Exception as exc:
+        typer.secho(str(exc), fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+    if not applied:
+        typer.echo("Nothing to migrate.")
+    else:
+        for name in applied:
+            typer.secho(f"Migrated: {name}", fg=typer.colors.GREEN)
+    if seed or seeder:
+        _seed(class_name=seeder, app=app)
+
+
+@app.command("migrate:rollback")
+def migrate_rollback(
+    steps: int = typer.Option(1, "--step", help="Batches to roll back"),
+) -> None:
+    """Roll back the last migration batch."""
+    try:
+        rolled = _run_async(_boot_migrator().rollback(steps))
+    except Exception as exc:
+        typer.secho(str(exc), fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+    if not rolled:
+        typer.echo("Nothing to roll back.")
+        return
+    for name in rolled:
+        typer.secho(f"Rolled back: {name}", fg=typer.colors.YELLOW)
+
+
+@app.command("migrate:fresh")
+def migrate_fresh(
+    seed: bool = typer.Option(False, "--seed", help="Run DatabaseSeeder after migrating"),
+    seeder: Optional[str] = typer.Option(
+        None,
+        "--seeder",
+        help="Seeder class to run when --seed is set",
+    ),
+) -> None:
+    """Drop all tables and re-run every migration."""
+    try:
+        app = _boot_app()
+        applied = _run_async(Migrator(Path.cwd() / "database" / "migrations").fresh())
+    except Exception as exc:
+        typer.secho(str(exc), fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+    for name in applied:
+        typer.secho(f"Migrated: {name}", fg=typer.colors.GREEN)
+    if seed or seeder:
+        _seed(class_name=seeder, app=app)
+
+
+@app.command("migrate:status")
+def migrate_status() -> None:
+    """Show which migrations have run."""
+    try:
+        rows = _run_async(_boot_migrator().status())
+    except Exception as exc:
+        typer.secho(str(exc), fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+    if not rows:
+        typer.echo("No migrations.")
+        return
+    for row in rows:
+        mark = "Ran" if row["ran"] else "Pending"
+        typer.echo(f"{mark:8} {row['migration']}")
+
+
+@app.command("make:lang")
+def make_lang_command(
+    locale: str = typer.Argument(..., help="Locale tag, e.g. en or sw"),
+    force: bool = typer.Option(False, "--force", help="Overwrite an existing locale tree"),
+) -> None:
+    """Create an empty lang/<locale>/ tree."""
+    try:
+        path = make_lang(locale, Path.cwd(), force=force)
+    except LangError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+    typer.secho(f"Locale created: {path.relative_to(Path.cwd())}", fg=typer.colors.GREEN)
+
+
+@app.command("lang:publish")
+def lang_publish(
+    force: bool = typer.Option(False, "--force", help="Overwrite existing published files"),
+) -> None:
+    """Publish framework language files into lang/."""
+    try:
+        path = publish_lang(Path.cwd(), force=force)
+    except LangError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+    typer.secho(f"Language files published: {path.relative_to(Path.cwd())}", fg=typer.colors.GREEN)
+
+
+@app.command("lang:missing")
+def lang_missing(
+    locale: str = typer.Option(..., "--locale", "-l", help="Target locale to compare"),
+    fallback: str = typer.Option("en", "--fallback", help="Fallback locale"),
+) -> None:
+    """List keys present in the fallback locale but missing in the target."""
+    missing = missing_keys(Path.cwd(), locale=locale, fallback=fallback)
+    if not missing:
+        typer.secho("No missing keys.", fg=typer.colors.GREEN)
+        return
+    for key in missing:
+        typer.echo(key)
+    raise typer.Exit(code=1)
 
 
 @app.command("serve")

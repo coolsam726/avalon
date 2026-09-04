@@ -74,14 +74,16 @@ def test_scaffold_kernel_files_contract(tmp_path: Path) -> None:
         ".env.example",
         "bootstrap/app.py",
         "config/app.py",
-        "app/Providers/AppServiceProvider.py",
-        "app/Http/Controllers/WelcomeController.py",
+        "app/providers/app_service_provider.py",
+        "app/http/controllers/welcome_controller.py",
     ]
     for relative in required:
         assert (root / relative).exists(), f"missing scaffold file: {relative}"
 
     bootstrap = (root / "bootstrap" / "app.py").read_text(encoding="utf-8")
-    assert "Application(BASE_PATH).bootstrap()" in bootstrap
+    assert "Application.configure(BASE_PATH)" in bootstrap
+    assert "with_middleware" in bootstrap
+    assert ".create()" in bootstrap
     assert "asgi = application.asgi" in bootstrap
 
     config_app = (root / "config" / "app.py").read_text(encoding="utf-8")
@@ -102,9 +104,14 @@ def test_container_autowire_contract() -> None:
 
 
 def test_env_override_contract(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("APP_NAME", "Stale")
-    (tmp_path / ".env").write_text("APP_NAME=Fresh\n", encoding="utf-8")
+    """Real process env wins over ``.env`` (12-factor / Laravel dotenv default)."""
+    monkeypatch.setenv("APP_NAME", "FromProcess")
+    (tmp_path / ".env").write_text("APP_NAME=FromDotEnv\n", encoding="utf-8")
     from avalon.config import load_environment
 
     assert load_environment(tmp_path) is True
-    assert env("APP_NAME") == "Fresh"
+    assert env("APP_NAME") == "FromProcess"
+
+    monkeypatch.delenv("APP_NAME", raising=False)
+    assert load_environment(tmp_path) is True
+    assert env("APP_NAME") == "FromDotEnv"

@@ -19,7 +19,7 @@ def load_environment(base_path: str | Path, filename: str = ".env") -> bool:
     path = Path(base_path) / filename
     if not path.is_file():
         return False
-    _load_dotenv(path, override=True)
+    _load_dotenv(path, override=False)
     return True
 
 

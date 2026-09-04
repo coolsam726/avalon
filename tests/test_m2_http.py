@@ -14,6 +14,7 @@ from avalon.http import (
     HttpException,
     NotFoundHttpException,
     Request,
+    html,
     json,
     make_response,
 )
@@ -27,17 +28,17 @@ def _make_app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Application:
     (tmp_path / ".env").write_text("APP_NAME=HttpApp\nAPP_DEBUG=true\n", encoding="utf-8")
 
     app_pkg = tmp_path / "app"
-    (app_pkg / "Http" / "Controllers").mkdir(parents=True)
-    (app_pkg / "Http" / "Middleware").mkdir(parents=True)
+    (app_pkg / "http" / "controllers").mkdir(parents=True)
+    (app_pkg / "http" / "middleware").mkdir(parents=True)
     for relative in (
         "__init__.py",
-        "Http/__init__.py",
-        "Http/Controllers/__init__.py",
-        "Http/Middleware/__init__.py",
+        "http/__init__.py",
+        "http/controllers/__init__.py",
+        "http/middleware/__init__.py",
     ):
         (app_pkg / relative).write_text("", encoding="utf-8")
 
-    (app_pkg / "Http" / "Controllers" / "PingController.py").write_text(
+    (app_pkg / "http" / "controllers" / "ping_controller.py").write_text(
         "from avalon.http import Controller, NotFoundHttpException, Request\n"
         "\n"
         "class PingController(Controller):\n"
@@ -51,7 +52,7 @@ def _make_app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Application:
         "        raise NotFoundHttpException('Missing resource')\n",
         encoding="utf-8",
     )
-    (app_pkg / "Http" / "Middleware" / "TagMiddleware.py").write_text(
+    (app_pkg / "http" / "middleware" / "tag_middleware.py").write_text(
         "from avalon.http import Middleware, Request\n"
         "\n"
         "class TagMiddleware(Middleware):\n"
@@ -72,7 +73,7 @@ def _make_app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Application:
         "config = {\n"
         "    'middleware': [],\n"
         "    'middleware_aliases': {\n"
-        "        'tag': 'app.Http.Middleware.TagMiddleware.TagMiddleware',\n"
+        "        'tag': 'app.http.middleware.tag_middleware.TagMiddleware',\n"
         "    },\n"
         "}\n",
         encoding="utf-8",
@@ -80,7 +81,7 @@ def _make_app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Application:
     routes = tmp_path / "routes"
     routes.mkdir()
     (routes / "web.py").write_text(
-        "from app.Http.Controllers.PingController import PingController\n"
+        "from app.http.controllers.ping_controller import PingController\n"
         "from avalon.routing import Route\n"
         "\n"
         "Route.get('/', [PingController, 'index'])\n"
@@ -148,6 +149,14 @@ def test_json_and_response_helpers() -> None:
     assert make_response("hi").body == b"hi"
     assert make_response({"a": 1}).media_type == "application/json"
     assert make_response(b"xyz").body == b"xyz"
+
+    page = html("<p>hi</p>", status=201, headers={"X-Page": "1"})
+    assert page.status_code == 201
+    assert page.media_type == "text/html"
+    assert page.body == b"<p>hi</p>"
+    assert page.headers["x-page"] == "1"
+    # make_response passes an existing response through untouched.
+    assert make_response(page) is page
 
 
 def test_http_exception_payload() -> None:

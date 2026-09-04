@@ -5,10 +5,12 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from avalon.config import ConfigRepository, load_environment, set_repository
+from avalon.framework.bootstrap import ApplicationBuilder, Middleware
 from avalon.framework.container import Container
 from avalon.providers.provider import ServiceProvider
 from avalon.routing.router import Router, set_router
@@ -29,6 +31,7 @@ class Application:
         self._booted = False
         self._bootstrapped = False
         self._routes_loaded = False
+        self._middleware_callbacks: list[Callable[[Middleware], None]] = []
 
         self.container.instance(Application, self)
         self.container.instance(Container, self.container)
@@ -37,6 +40,18 @@ class Application:
         self.container.instance(HttpKernel, self.http_kernel)
         set_repository(self.config)
         set_router(self.router)
+        self._ensure_import_path()
+
+    @classmethod
+    def configure(cls, base_path: str | Path | None = None) -> ApplicationBuilder:
+        """Start a Laravel-shaped fluent bootstrap (``with_middleware`` → ``create``)."""
+        return ApplicationBuilder(base_path)
+
+    def _ensure_import_path(self) -> None:
+        """Make ``app.*`` importable when Grail boots from an app root."""
+        root = str(self.base_path)
+        if root not in sys.path:
+            sys.path.insert(0, root)
 
     @property
     def is_booted(self) -> bool:
@@ -63,6 +78,7 @@ class Application:
 
         self.load_environment()
         self.load_configuration()
+        self.apply_middleware_callbacks()
         self.register_configured_providers()
         self.boot()
         self.load_routes()
@@ -75,6 +91,15 @@ class Application:
     def load_configuration(self) -> None:
         self.config.load_directory(self.path("config"))
         set_repository(self.config)
+
+    def apply_middleware_callbacks(self) -> None:
+        """Run ``with_middleware`` callbacks against ``config/http`` (Laravel 11 shape)."""
+        if not self._middleware_callbacks:
+            return
+        configurator = Middleware(self.config)
+        for callback in self._middleware_callbacks:
+            callback(configurator)
+        configurator.apply()
 
     def register(self, provider: ServiceProvider | type[ServiceProvider] | str) -> ServiceProvider:
         instance = self._make_provider(provider)
@@ -132,6 +157,24 @@ class Application:
 
     def resolve(self, abstract: type | str) -> Any:
         return self.container.resolve(abstract)
+
+    def set_locale(self, locale: str) -> None:
+        """Set the active locale for the current request/task context."""
+        from avalon.translation.helpers import get_translator
+        from avalon.translation.locale import set_locale
+
+        set_locale(locale)
+        get_translator().set_locale(locale)
+
+    def get_locale(self) -> str:
+        from avalon.translation.helpers import get_translator
+
+        return get_translator().get_locale()
+
+    def is_locale(self, locale: str) -> bool:
+        from avalon.translation.locale import is_locale
+
+        return is_locale(locale)
 
     def _make_provider(
         self,
