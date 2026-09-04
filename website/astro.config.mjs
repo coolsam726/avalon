@@ -66,10 +66,25 @@ export default defineConfig({
 						crossorigin: true,
 					},
 				},
+				{
+					// After Starlight restores session open-state, keep only the
+					// group that contains the current page expanded.
+					tag: 'script',
+					content: `
+document.addEventListener('DOMContentLoaded', () => {
+  const sidebar = document.getElementById('starlight__sidebar');
+  if (!sidebar) return;
+  for (const details of sidebar.querySelectorAll('details')) {
+    details.open = Boolean(details.querySelector('[aria-current="page"]'));
+  }
+});
+`,
+				},
 			],
 			sidebar: [
 				{
 					label: 'Getting Started',
+					collapsed: true,
 					items: [
 						{ label: 'Installation', slug: 'installation' },
 						{ label: 'Directory Structure', slug: 'structure' },
@@ -77,10 +92,26 @@ export default defineConfig({
 				},
 				{
 					label: 'The Basics',
-					items: [{ label: 'Middleware', slug: 'middleware' }],
+					collapsed: true,
+					items: [
+						{ label: 'Routing', slug: 'routing' },
+						{ label: 'Middleware', slug: 'middleware' },
+						{ label: 'CSRF Protection', slug: 'csrf' },
+						{ label: 'Controllers', slug: 'controllers' },
+						{ label: 'Requests', slug: 'requests' },
+						{ label: 'Responses', slug: 'responses' },
+						{ label: 'Views', slug: 'views' },
+						{ label: 'Asset Bundling', slug: 'asset-bundling' },
+						{ label: 'URL Generation', slug: 'urls' },
+						{ label: 'Session', slug: 'session' },
+						{ label: 'Validation', slug: 'validation' },
+						{ label: 'Error Handling', slug: 'errors' },
+						{ label: 'Logging', slug: 'logging' },
+					],
 				},
 				{
 					label: 'Database',
+					collapsed: true,
 					items: [
 						{ label: 'Getting Started', slug: 'database' },
 						{ label: 'Query Builder', slug: 'database/queries' },
@@ -91,6 +122,7 @@ export default defineConfig({
 				},
 				{
 					label: 'Caliburn',
+					collapsed: true,
 					items: [
 						{ label: 'Getting Started', slug: 'caliburn' },
 						{ label: 'Rendering Views', slug: 'caliburn/rendering' },
@@ -103,6 +135,7 @@ export default defineConfig({
 				},
 				{
 					label: 'Articulate',
+					collapsed: true,
 					items: [
 						{ label: 'Getting Started', slug: 'articulate' },
 						{ label: 'Relationships', slug: 'articulate/relationships' },
