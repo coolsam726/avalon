@@ -33,7 +33,7 @@ def test_s2_avalon_new_tree(tmp_path: Path) -> None:
     root = tmp_path / "smoke_app"
     assert (root / "grail").is_file()
     assert (root / "bootstrap" / "app.py").is_file()
-    assert (root / "app" / "Http" / "Controllers" / "WelcomeController.py").is_file()
+    assert (root / "app" / "http" / "controllers" / "welcome_controller.py").is_file()
     assert (root / "routes" / "api.py").is_file()
     assert (root / ".env.example").is_file()
 
@@ -54,8 +54,8 @@ def test_s4_welcome_http(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
         client = TestClient(module.asgi)
         response = client.get("/")
         assert response.status_code == 200
-        payload = response.json()
-        assert "Welcome to Avalon" in payload["message"]
+        assert response.headers["content-type"].startswith("text/html")
+        assert "Welcome to Avalon" in response.text
         assert module.asgi.title == "HttpSmoke"
     finally:
         purge_generated_app_modules()

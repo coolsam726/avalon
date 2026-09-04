@@ -7,6 +7,7 @@ import avalon.caliburn
 import avalon.http
 import avalon.orm
 import avalon.routing
+import avalon.translation
 import avalon.validation
 from avalon.framework import Application, Container
 from avalon.providers import ServiceProvider
@@ -14,8 +15,11 @@ from avalon.providers import ServiceProvider
 
 def test_stub_packages_importable() -> None:
     assert avalon.routing.__all__
-    assert avalon.validation.__all__ == []
-    assert avalon.orm.__all__ == []
+    assert "FormRequest" in avalon.validation.__all__
+    assert "Translator" in avalon.translation.__all__
+    assert "__" in avalon.translation.__all__
+    assert "Model" in avalon.orm.__all__
+    assert "QueryBuilder" in avalon.orm.__all__
     assert avalon.auth.__all__ == []
     assert avalon.caliburn.__all__ == []
     assert "Controller" in avalon.http.__all__

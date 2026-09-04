@@ -26,6 +26,11 @@ htmlcov/
 .tox/
 .nox/
 
+# Docs site (Astro / Starlight)
+node_modules/
+website/dist/
+website/.astro/
+
 # Env / local
 .env
 .env.*

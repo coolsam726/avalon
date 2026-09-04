@@ -13,11 +13,13 @@ Laravel-inspired Python web framework with Adonis-class DX, built on FastAPI/Sta
 
 **[`docs/PLAN.md`](docs/PLAN.md)** is the binding architecture and milestone document. Follow it strictly unless the plan is deliberately revised.
 
+**[`website/`](website/)** — published documentation for application developers (Astro Starlight). Run `make docs`.
+
 **[`docs/SMOKE.md`](docs/SMOKE.md)** — smoke + regression gates. Coverage **≥ 95%** on the full suite (`make test-cov`).
 
 ## Status
 
-**M2 — HTTP + routing** complete. Living example: [`examples/progress`](examples/progress). Next: **M3 — Validation + DX**.
+**Status:** M5 — ORM complete (Articulate / `avalon.orm`): Active Record `Model` + query builder, relationships, soft deletes, events, migrations, seeders. Living example: [`examples/progress`](examples/progress). Next: **M6 — Caliburn**.
 
 ## Quick start (dev)
 
@@ -52,11 +54,12 @@ src/avalon/
   http/         # kernel, request, response, middleware
   routing/      # Route DSL → FastAPI bridge
   validation/   # FormRequest
+  translation/  # __(), trans_choice(), Number, SetLocale
   installer/    # avalon new …
   grail/        # python grail …
-  orm/          # later (M4)
-  caliburn/     # later (M5)
-  auth/         # later (M6)
+  orm/          # Model, query builder, migrations
+  caliburn/     # later (M6)
+  auth/         # later (M7)
 grail           # root script → python grail …
 ```
 

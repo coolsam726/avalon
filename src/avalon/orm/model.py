@@ -1,0 +1,852 @@
+"""Active Record model — Eloquent parity."""
+
+from __future__ import annotations
+
+import inspect
+from collections.abc import Callable, Iterable, Mapping
+from datetime import datetime, timezone
+from typing import Any, ClassVar
+
+from avalon.orm.builder import ModelNotFoundError, QueryBuilder
+from avalon.orm.casts import cast_value, serialize_value, uncast_value
+from avalon.orm.collection import Collection
+from avalon.orm.inflector import foreign_key, snake, table_name
+
+EVENTS = (
+    "retrieved",
+    "creating",
+    "created",
+    "updating",
+    "updated",
+    "saving",
+    "saved",
+    "deleting",
+    "deleted",
+    "restoring",
+    "restored",
+    "replicating",
+)
+
+# Set by ``avalon.orm.seeder.without_model_events`` / ``WithoutModelEvents``.
+_EVENTS_DISABLED = False
+
+
+class MassAssignmentError(RuntimeError):
+    """Raised when a guarded attribute is mass-assigned."""
+
+
+class RelationNotLoadedError(AttributeError):
+    """Raised when reading a relation that was never loaded.
+
+    Avalon never lazy-loads on attribute access: a hidden `await` inside a
+    property is how N+1 storms happen. Load it explicitly instead.
+    """
+
+
+class ModelMeta(type):
+    """Wires table names, event buckets, and global scopes per subclass."""
+
+    def __new__(mcls, name: str, bases: tuple[type, ...], namespace: dict[str, Any]) -> type:
+        cls = super().__new__(mcls, name, bases, namespace)
+        if not bases:  # the Model base itself
+            return cls
+
+        if namespace.get("table") is None and "table" not in namespace:
+            cls.table = None  # resolved lazily by get_table()
+
+        # Each subclass owns its listeners and scopes; never share the parent's.
+        cls._events = {event: [] for event in EVENTS}
+        cls._global_scopes = {}
+
+        for base in reversed(bases):
+            inherited_scopes = getattr(base, "_global_scopes", None)
+            if inherited_scopes:
+                cls._global_scopes.update(inherited_scopes)
+            inherited_events = getattr(base, "_events", None)
+            if inherited_events:
+                for event, listeners in inherited_events.items():
+                    cls._events.setdefault(event, []).extend(listeners)
+
+        booter = namespace.get("boot")
+        if callable(booter):
+            booter(cls)
+        for base in bases:
+            base_boot = getattr(base, f"boot_{snake(base.__name__)}", None)
+            if callable(base_boot):
+                base_boot(cls)
+        return cls
+
+
+class Model(metaclass=ModelMeta):
+    """Eloquent-shaped Active Record base."""
+
+    table: ClassVar[str | None] = None
+    primary_key: ClassVar[str] = "id"
+    incrementing: ClassVar[bool] = True
+    key_type: ClassVar[str] = "int"
+    connection: ClassVar[str | None] = None
+    timestamps: ClassVar[bool] = True
+    created_at: ClassVar[str] = "created_at"
+    updated_at: ClassVar[str] = "updated_at"
+    per_page: ClassVar[int] = 15
+
+    fillable: ClassVar[tuple[str, ...]] = ()
+    guarded: ClassVar[tuple[str, ...]] = ("*",)
+    hidden: ClassVar[tuple[str, ...]] = ()
+    visible: ClassVar[tuple[str, ...]] = ()
+    appends: ClassVar[tuple[str, ...]] = ()
+    casts: ClassVar[dict[str, Any]] = {}
+    attributes: ClassVar[dict[str, Any]] = {}
+    with_: ClassVar[tuple[str, ...]] = ()
+
+    _events: ClassVar[dict[str, list[Callable[..., Any]]]] = {}
+    _global_scopes: ClassVar[dict[str, Callable[[QueryBuilder], Any]]] = {}
+
+    def __init__(self, attributes: Mapping[str, Any] | None = None, **kwargs: Any) -> None:
+        self._attributes: dict[str, Any] = {}
+        self._original: dict[str, Any] = {}
+        self._relations: dict[str, Any] = {}
+        self._exists = False
+        self._extra: dict[str, Any] = {}
+
+        defaults = dict(type(self).attributes)
+        if defaults:
+            self._attributes.update(defaults)
+
+        payload = {**(attributes or {}), **kwargs}
+        if payload:
+            self.fill(payload)
+
+    # --- naming -------------------------------------------------------------
+
+    @classmethod
+    def get_table(cls) -> str:
+        return cls.table or table_name(cls.__name__)
+
+    @classmethod
+    def get_foreign_key(cls) -> str:
+        return foreign_key(cls.__name__, cls.primary_key)
+
+    def get_key(self) -> Any:
+        return self._attributes.get(type(self).primary_key)
+
+    def set_key(self, value: Any) -> None:
+        self._attributes[type(self).primary_key] = value
+
+    def is_(self, other: Any) -> bool:
+        return (
+            isinstance(other, Model)
+            and type(self) is type(other)
+            and self.get_key() == other.get_key()
+        )
+
+    def is_not(self, other: Any) -> bool:
+        return not self.is_(other)
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Model):
+            return self.is_(other)
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash((type(self).__name__, self.get_key()))
+
+    def __repr__(self) -> str:
+        return f"<{type(self).__name__} {type(self).primary_key}={self.get_key()!r}>"
+
+    # --- query entrypoints --------------------------------------------------
+
+    @classmethod
+    def query(cls) -> QueryBuilder:
+        builder = QueryBuilder(model=cls, connection=cls.connection)
+        if cls.with_:
+            builder.with_(*cls.with_)
+        return builder
+
+    @classmethod
+    def new_query(cls) -> QueryBuilder:
+        """Query without the model's default eager loads."""
+        return QueryBuilder(model=cls, connection=cls.connection)
+
+    @classmethod
+    def where(cls, *args: Any, **kwargs: Any) -> QueryBuilder:
+        return cls.query().where(*args, **kwargs)
+
+    @classmethod
+    def where_in(cls, column: str, values: Iterable[Any]) -> QueryBuilder:
+        return cls.query().where_in(column, values)
+
+    @classmethod
+    def with_relations(cls, *relations: str, **constrained: Any) -> QueryBuilder:
+        return cls.query().with_(*relations, **constrained)
+
+    @classmethod
+    async def all(cls) -> Collection[Any]:
+        return await cls.query().get()
+
+    @classmethod
+    async def find(cls, key: Any) -> Any:
+        return await cls.query().find(key)
+
+    @classmethod
+    async def find_or_fail(cls, key: Any) -> Any:
+        return await cls.query().find_or_fail(key)
+
+    @classmethod
+    async def first(cls) -> Any:
+        return await cls.query().first()
+
+    @classmethod
+    async def count(cls) -> int:
+        return await cls.query().count()
+
+    @classmethod
+    async def paginate(cls, per_page: int | None = None, page: int = 1) -> Any:
+        return await cls.query().paginate(per_page, page)
+
+    @classmethod
+    async def create(cls, attributes: Mapping[str, Any] | None = None, **kwargs: Any) -> Any:
+        instance = cls()
+        instance.fill({**(attributes or {}), **kwargs})
+        await instance.save()
+        return instance
+
+    @classmethod
+    async def force_create(cls, attributes: Mapping[str, Any]) -> Any:
+        instance = cls()
+        instance.force_fill(attributes)
+        await instance.save()
+        return instance
+
+    @classmethod
+    async def destroy(cls, *keys: Any) -> int:
+        flat: list[Any] = []
+        for key in keys:
+            flat.extend(key if isinstance(key, (list, tuple, set)) else [key])
+        deleted = 0
+        for key in flat:
+            found = await cls.find(key)
+            if found is not None and await found.delete():
+                deleted += 1
+        return deleted
+
+    # --- attributes ---------------------------------------------------------
+
+    def fill(self, attributes: Mapping[str, Any]) -> Model:
+        if self._totally_guarded() and attributes:
+            offending = ", ".join(sorted(attributes))
+            raise MassAssignmentError(
+                f"Add [{offending}] to fillable to allow mass assignment on "
+                f"{type(self).__name__}."
+            )
+        for key, value in attributes.items():
+            if self.is_fillable(key):
+                self.set_attribute(key, value)
+        return self
+
+    def force_fill(self, attributes: Mapping[str, Any]) -> Model:
+        for key, value in attributes.items():
+            self.set_attribute(key, value)
+        return self
+
+    @classmethod
+    def is_fillable(cls, key: str) -> bool:
+        if key in cls.fillable:
+            return True
+        if cls.is_guarded(key):
+            return False
+        return not cls.fillable
+
+    @classmethod
+    def is_guarded(cls, key: str) -> bool:
+        return tuple(cls.guarded) == ("*",) or key in cls.guarded
+
+    @classmethod
+    def _totally_guarded(cls) -> bool:
+        return not cls.fillable and tuple(cls.guarded) == ("*",)
+
+    def set_attribute(self, key: str, value: Any) -> None:
+        mutator = getattr(self, f"set_{key}_attribute", None)
+        if callable(mutator):
+            mutated = mutator(value)
+            if mutated is not None:
+                value = mutated
+            else:
+                return
+        casts = type(self).casts
+        if key in casts:
+            value = uncast_value(cast_value(value, casts[key]), casts[key])
+        self._attributes[key] = value
+
+    def get_attribute(self, key: str, default: Any = None) -> Any:
+        if key in self._attributes:
+            value = self._attributes[key]
+            casts = type(self).casts
+            if key in casts:
+                value = cast_value(value, casts[key])
+            accessor = getattr(self, f"get_{key}_attribute", None)
+            if callable(accessor):
+                return accessor(value)
+            return value
+
+        accessor = getattr(self, f"get_{key}_attribute", None)
+        if callable(accessor):
+            return accessor(None) if _accepts_argument(accessor) else accessor()
+
+        if key in self._relations:
+            return self._relations[key]
+        return self._extra.get(key, default)
+
+    def get_raw_attribute(self, key: str, default: Any = None) -> Any:
+        return self._attributes.get(key, default)
+
+    def get_attributes(self) -> dict[str, Any]:
+        return dict(self._attributes)
+
+    def __getattr__(self, name: str) -> Any:
+        if name.startswith("_"):
+            raise AttributeError(name)
+        attributes = self.__dict__.get("_attributes", {})
+        relations = self.__dict__.get("_relations", {})
+        extra = self.__dict__.get("_extra", {})
+
+        if name in attributes or name in type(self).casts:
+            return self.get_attribute(name)
+        if name in relations:
+            return relations[name]
+        if name in extra:
+            return extra[name]
+
+        # Computed attributes (`get_display_name_attribute`) need no column.
+        accessor = getattr(type(self), f"get_{name}_attribute", None)
+        if callable(accessor):
+            return self.get_attribute(name)
+
+        # A declared relation that was never loaded must fail loudly.
+        method = getattr(type(self), name, None)
+        if callable(method) and getattr(method, "_is_relation", False):
+            raise RelationNotLoadedError(
+                f"Relation {name!r} is not loaded on {type(self).__name__}. "
+                f"Use .with_({name!r}) when querying, await model.load({name!r}), "
+                f"or await model.{name}().get()."
+            )
+        raise AttributeError(f"{type(self).__name__!r} has no attribute {name!r}")
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name.startswith("_") or name in type(self).__dict__ or hasattr(type(self), name):
+            object.__setattr__(self, name, value)
+            return
+        self.set_attribute(name, value)
+
+    def __getitem__(self, key: str) -> Any:
+        return self.get_attribute(key)
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        self.set_attribute(key, value)
+
+    # --- dirty tracking -----------------------------------------------------
+
+    def sync_original(self) -> Model:
+        self._original = dict(self._attributes)
+        return self
+
+    def get_original(self, key: str | None = None, default: Any = None) -> Any:
+        if key is None:
+            return dict(self._original)
+        return self._original.get(key, default)
+
+    def get_dirty(self) -> dict[str, Any]:
+        return {
+            key: value
+            for key, value in self._attributes.items()
+            if key not in self._original or self._original[key] != value
+        }
+
+    def is_dirty(self, *keys: str) -> bool:
+        dirty = self.get_dirty()
+        if not keys:
+            return bool(dirty)
+        return any(key in dirty for key in keys)
+
+    def is_clean(self, *keys: str) -> bool:
+        return not self.is_dirty(*keys)
+
+    def get_changes(self) -> dict[str, Any]:
+        return dict(self._changes) if hasattr(self, "_changes") else {}
+
+    def was_changed(self, *keys: str) -> bool:
+        changes = self.get_changes()
+        if not keys:
+            return bool(changes)
+        return any(key in changes for key in keys)
+
+    @property
+    def exists(self) -> bool:
+        return self._exists
+
+    # --- hydration ----------------------------------------------------------
+
+    @classmethod
+    def _hydrate(cls, row: Mapping[str, Any]) -> Model:
+        instance = cls()
+        instance._attributes = dict(row)
+        instance._exists = True
+        instance.sync_original()
+        cls._fire_sync("retrieved", instance)
+        return instance
+
+    def new_instance(self, attributes: Mapping[str, Any] | None = None, exists: bool = False):
+        instance = type(self)()
+        if attributes:
+            instance.force_fill(attributes)
+        instance._exists = exists
+        if exists:
+            instance.sync_original()
+        return instance
+
+    # --- persistence --------------------------------------------------------
+
+    def _fresh_timestamp(self) -> datetime:
+        return datetime.now(timezone.utc).replace(tzinfo=None, microsecond=0)
+
+    def _touch_timestamps(self, *, creating: bool) -> None:
+        if not type(self).timestamps:
+            return
+        now = self._fresh_timestamp()
+        cls = type(self)
+        if creating and cls.created_at and cls.created_at not in self.get_dirty():
+            self._attributes.setdefault(cls.created_at, now)
+        if cls.updated_at:
+            self._attributes[cls.updated_at] = now
+
+    async def save(self) -> bool:
+        if await self._fire_event("saving") is False:
+            return False
+
+        if self._exists:
+            saved = await self._perform_update()
+        else:
+            saved = await self._perform_insert()
+
+        if saved:
+            await self._fire_event("saved")
+        return saved
+
+    async def _perform_insert(self) -> bool:
+        if await self._fire_event("creating") is False:
+            return False
+        self._touch_timestamps(creating=True)
+
+        cls = type(self)
+        payload = dict(self._attributes)
+        if cls.incrementing and payload.get(cls.primary_key) is None:
+            payload.pop(cls.primary_key, None)
+
+        builder = cls.new_query()
+        key = await builder.insert_get_id(payload)
+        if cls.incrementing and key is not None:
+            self._attributes[cls.primary_key] = key
+
+        self._exists = True
+        self._changes = dict(self._attributes)
+        self.sync_original()
+        await self._fire_event("created")
+        return True
+
+    async def _perform_update(self) -> bool:
+        dirty = self.get_dirty()
+        if not dirty:
+            return True
+        if await self._fire_event("updating") is False:
+            return False
+
+        self._touch_timestamps(creating=False)
+        dirty = self.get_dirty()
+        cls = type(self)
+        await cls.new_query().where(cls.primary_key, "=", self.get_key()).update(dirty)
+
+        self._changes = dict(dirty)
+        self.sync_original()
+        await self._fire_event("updated")
+        return True
+
+    async def update(self, attributes: Mapping[str, Any] | None = None, **kwargs: Any) -> bool:
+        if not self._exists:
+            return False
+        self.fill({**(attributes or {}), **kwargs})
+        return await self.save()
+
+    async def delete(self) -> bool:
+        cls = type(self)
+        if self.get_key() is None:
+            return False
+        if await self._fire_event("deleting") is False:
+            return False
+
+        if getattr(self, "_soft_deletes", False):
+            deleted = await self._perform_soft_delete()
+        else:
+            await cls.new_query().where(cls.primary_key, "=", self.get_key()).delete()
+            self._exists = False
+            deleted = True
+
+        if deleted:
+            await self._fire_event("deleted")
+        return deleted
+
+    async def force_delete(self) -> bool:
+        cls = type(self)
+        await cls.new_query().where(cls.primary_key, "=", self.get_key()).delete()
+        self._exists = False
+        await self._fire_event("deleted")
+        return True
+
+    async def refresh(self) -> Model:
+        cls = type(self)
+        fresh = await cls.new_query().without_global_scopes().where_key(self.get_key()).first()
+        if fresh is not None:
+            self._attributes = dict(fresh._attributes)
+            self._relations.clear()
+            self.sync_original()
+        return self
+
+    async def fresh(self) -> Any:
+        cls = type(self)
+        return await cls.new_query().without_global_scopes().where_key(self.get_key()).first()
+
+    def replicate(self, exclude: Iterable[str] | None = None) -> Model:
+        cls = type(self)
+        skip = {cls.primary_key, cls.created_at, cls.updated_at, *(exclude or [])}
+        clone = cls()
+        clone.force_fill({k: v for k, v in self._attributes.items() if k not in skip})
+        cls._fire_sync("replicating", clone)
+        return clone
+
+    async def touch(self) -> bool:
+        if not type(self).timestamps:
+            return False
+        self._touch_timestamps(creating=False)
+        return await self.save()
+
+    # --- relations ----------------------------------------------------------
+
+    def get_relation(self, name: str) -> Any:
+        """Build the relation object itself, ignoring any loaded value."""
+        declared = getattr(type(self), name, None)
+        if isinstance(declared, RelationDescriptor):
+            return declared.build(self)
+        if declared is None:
+            raise AttributeError(f"{type(self).__name__} has no relation {name!r}")
+        if callable(declared):
+            return declared(self)
+        raise AttributeError(f"{name!r} on {type(self).__name__} is not a relation")
+
+    def relation_loaded(self, name: str) -> bool:
+        return name in self._relations
+
+    def set_relation(self, name: str, value: Any) -> Model:
+        self._relations[name] = value
+        return self
+
+    def unset_relation(self, name: str) -> Model:
+        self._relations.pop(name, None)
+        return self
+
+    def get_relations(self) -> dict[str, Any]:
+        return dict(self._relations)
+
+    async def load(self, *relations: str) -> Model:
+        from avalon.orm.eager import eager_load
+
+        await eager_load([self], relations)
+        return self
+
+    async def load_missing(self, *relations: str) -> Model:
+        pending = [name for name in relations if not self.relation_loaded(name.split(".")[0])]
+        if pending:
+            await self.load(*pending)
+        return self
+
+    def has_one(self, related: type[Model], foreign: str | None = None, local: str | None = None):
+        from avalon.orm.relations import HasOne
+
+        return HasOne(self, related, foreign or type(self).get_foreign_key(),
+                      local or type(self).primary_key)
+
+    def has_many(self, related: type[Model], foreign: str | None = None, local: str | None = None):
+        from avalon.orm.relations import HasMany
+
+        return HasMany(self, related, foreign or type(self).get_foreign_key(),
+                       local or type(self).primary_key)
+
+    def belongs_to(
+        self,
+        related: type[Model],
+        foreign: str | None = None,
+        owner: str | None = None,
+    ):
+        from avalon.orm.relations import BelongsTo
+
+        return BelongsTo(self, related, foreign or related.get_foreign_key(),
+                         owner or related.primary_key)
+
+    def belongs_to_many(
+        self,
+        related: type[Model],
+        table: str | None = None,
+        foreign_pivot_key: str | None = None,
+        related_pivot_key: str | None = None,
+    ):
+        from avalon.orm.relations import BelongsToMany
+
+        return BelongsToMany(self, related, table, foreign_pivot_key, related_pivot_key)
+
+    def has_many_through(
+        self,
+        related: type[Model],
+        through: type[Model],
+        first_key: str | None = None,
+        second_key: str | None = None,
+    ):
+        from avalon.orm.relations import HasManyThrough
+
+        return HasManyThrough(self, related, through, first_key, second_key)
+
+    def has_one_through(
+        self,
+        related: type[Model],
+        through: type[Model],
+        first_key: str | None = None,
+        second_key: str | None = None,
+    ):
+        from avalon.orm.relations import HasOneThrough
+
+        return HasOneThrough(self, related, through, first_key, second_key)
+
+    def morph_one(self, related: type[Model], name: str):
+        from avalon.orm.relations import MorphOne
+
+        return MorphOne(self, related, name)
+
+    def morph_many(self, related: type[Model], name: str):
+        from avalon.orm.relations import MorphMany
+
+        return MorphMany(self, related, name)
+
+    def morph_to(self, name: str, types: Mapping[str, type[Model]]):
+        from avalon.orm.relations import MorphTo
+
+        return MorphTo(self, name, types)
+
+    def morph_to_many(self, related: type[Model], name: str, table: str | None = None):
+        from avalon.orm.relations import MorphToMany
+
+        return MorphToMany(self, related, name, table)
+
+    def morphed_by_many(self, related: type[Model], name: str, table: str | None = None):
+        from avalon.orm.relations import MorphToMany
+
+        return MorphToMany(self, related, name, table, inverse=True)
+
+    # --- scopes -------------------------------------------------------------
+
+    @classmethod
+    def add_global_scope(cls, name: str, scope: Callable[[QueryBuilder], Any]) -> None:
+        cls._global_scopes = {**cls._global_scopes, name: scope}
+
+    @classmethod
+    def get_global_scopes(cls) -> dict[str, Callable[[QueryBuilder], Any]]:
+        return dict(cls._global_scopes)
+
+    @classmethod
+    def without_global_scope(cls, name: str) -> QueryBuilder:
+        return cls.query().without_global_scope(name)
+
+    @classmethod
+    def without_global_scopes(cls) -> QueryBuilder:
+        return cls.query().without_global_scopes()
+
+    # --- events -------------------------------------------------------------
+
+    @classmethod
+    def listen(cls, event: str, callback: Callable[..., Any]) -> None:
+        if event not in EVENTS:
+            raise ValueError(f"Unknown model event: {event!r}")
+        cls._events = {**cls._events, event: [*cls._events.get(event, []), callback]}
+
+    @classmethod
+    def observe(cls, observer: Any) -> None:
+        instance = observer() if isinstance(observer, type) else observer
+        for event in EVENTS:
+            handler = getattr(instance, event, None)
+            if callable(handler):
+                cls.listen(event, handler)
+
+    async def _fire_event(self, event: str) -> Any:
+        from avalon.orm import model as model_mod
+
+        if getattr(model_mod, "_EVENTS_DISABLED", False):
+            return True
+        for listener in type(self)._events.get(event, []):
+            outcome = listener(self)
+            if inspect.isawaitable(outcome):
+                outcome = await outcome
+            if outcome is False:
+                return False
+        return True
+
+    @classmethod
+    def _fire_sync(cls, event: str, instance: Model) -> None:
+        from avalon.orm import model as model_mod
+
+        if getattr(model_mod, "_EVENTS_DISABLED", False):
+            return
+        for listener in cls._events.get(event, []):
+            outcome = listener(instance)
+            if inspect.isawaitable(outcome):
+                outcome.close()  # sync context: retrieved/replicating must be sync
+
+    # --- serialization ------------------------------------------------------
+
+    def attributes_to_dict(self) -> dict[str, Any]:
+        cls = type(self)
+        data: dict[str, Any] = {}
+        for key in self._attributes:
+            if cls.visible and key not in cls.visible:
+                continue
+            if key in cls.hidden:
+                continue
+            data[key] = serialize_value(self.get_attribute(key))
+        for key in cls.appends:
+            if key in cls.hidden:
+                continue
+            data[key] = serialize_value(self.get_attribute(key))
+        for key, value in self._extra.items():
+            if key not in cls.hidden:
+                data[key] = serialize_value(value)
+        return data
+
+    def relations_to_dict(self) -> dict[str, Any]:
+        data: dict[str, Any] = {}
+        for name, value in self._relations.items():
+            if name in type(self).hidden:
+                continue
+            if isinstance(value, Collection):
+                data[name] = value.to_dict()
+            elif isinstance(value, Model):
+                data[name] = value.to_dict()
+            else:
+                data[name] = serialize_value(value)
+        return data
+
+    def to_dict(self) -> dict[str, Any]:
+        return {**self.attributes_to_dict(), **self.relations_to_dict()}
+
+    def to_json(self) -> str:
+        import json
+
+        return json.dumps(self.to_dict())
+
+    def make_hidden(self, *keys: str) -> Model:
+        type(self).hidden = tuple({*type(self).hidden, *keys})
+        return self
+
+    def make_visible(self, *keys: str) -> Model:
+        type(self).hidden = tuple(k for k in type(self).hidden if k not in keys)
+        return self
+
+
+def _accepts_argument(func: Callable[..., Any]) -> bool:
+    try:
+        signature = inspect.signature(func)
+    except (TypeError, ValueError):  # pragma: no cover - builtins
+        return False
+    return bool(signature.parameters)
+
+
+class PendingRelation:
+    """What `user.posts` gives you when `posts` was never loaded.
+
+    Calling it (`user.posts()`) returns the relation so you can keep querying;
+    using it as data raises, because silently emitting a query per row is the
+    N+1 bug Laravel developers already know to avoid.
+    """
+
+    __slots__ = ("_func", "_instance", "_name")
+
+    def __init__(self, instance: Any, func: Callable[..., Any], name: str) -> None:
+        object.__setattr__(self, "_instance", instance)
+        object.__setattr__(self, "_func", func)
+        object.__setattr__(self, "_name", name)
+
+    def __call__(self) -> Any:
+        return self._func(self._instance)
+
+    def _fail(self) -> Any:
+        name = self._name
+        raise RelationNotLoadedError(
+            f"Relation {name!r} is not loaded on {type(self._instance).__name__}. "
+            f"Eager load it with .with_({name!r}), call await model.load({name!r}), "
+            f"or query it directly with await model.{name}().get()."
+        )
+
+    def __iter__(self) -> Any:
+        return self._fail()
+
+    def __len__(self) -> int:
+        return self._fail()
+
+    def __bool__(self) -> bool:
+        return self._fail()
+
+    def __getitem__(self, key: Any) -> Any:
+        return self._fail()
+
+    def __getattr__(self, item: str) -> Any:
+        return self._fail()
+
+    def __repr__(self) -> str:
+        return f"<unloaded relation {self._name!r} on {type(self._instance).__name__}>"
+
+
+class RelationDescriptor:
+    """Descriptor backing `@relation` methods."""
+
+    _is_relation = True
+
+    def __init__(self, func: Callable[..., Any]) -> None:
+        self.func = func
+        self.name = func.__name__
+        self.__doc__ = func.__doc__
+
+    def __set_name__(self, owner: type, name: str) -> None:
+        self.name = name
+
+    def __get__(self, obj: Any, objtype: type | None = None) -> Any:
+        if obj is None:
+            return self
+        relations = obj.__dict__.get("_relations", {})
+        if self.name in relations:
+            return relations[self.name]
+        return PendingRelation(obj, self.func, self.name)
+
+    def __set__(self, obj: Any, value: Any) -> None:
+        obj._relations[self.name] = value
+
+    def build(self, obj: Any) -> Any:
+        return self.func(obj)
+
+
+def relation(method: Callable[..., Any]) -> RelationDescriptor:
+    """Declare a relation: `model.rel()` queries it, `model.rel` reads it."""
+    return RelationDescriptor(method)
+
+
+__all__ = [
+    "EVENTS",
+    "MassAssignmentError",
+    "Model",
+    "ModelNotFoundError",
+    "RelationNotLoadedError",
+    "relation",
+]

@@ -1,0 +1,107 @@
+---
+title: Installation
+description: Install Avalon and create your first application.
+---
+
+import { Steps } from '@astrojs/starlight/components';
+
+## Meet Avalon
+
+Avalon is a Python web framework inspired by Laravel. You create applications with `avalon new`, then use **Grail** — Avalon's in-app CLI — much like `artisan`:
+
+```bash
+avalon new blog
+cd blog
+python grail serve
+```
+
+Templates, routing, validation, localization, and the ORM all live behind the `avalon.*` package. You write application code; Avalon boots the container, compiles your routes, and serves them over ASGI.
+
+## Requirements
+
+- Python **3.11** or higher
+- `pip` and a virtual environment
+
+## Creating an Avalon project
+
+<Steps>
+
+1. **Install Avalon** (once published, or from a local checkout while developing against main):
+
+   ```bash
+   pip install avalon
+   # or, from a local clone of the framework:
+   pip install -e /path/to/avalon
+   ```
+
+2. **Create a new application:**
+
+   ```bash
+   avalon new blog
+   cd blog
+   ```
+
+3. **Create a virtual environment and install dependencies:**
+
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -e .                 # your app
+   pip install avalon               # or -e /path/to/avalon during local development
+   ```
+
+4. **Start the development server:**
+
+   ```bash
+   python grail serve
+   ```
+
+   Visit the URL Grail prints (typically `http://127.0.0.1:8000`).
+
+</Steps>
+
+:::tip[Grail]
+Every Avalon app ships with a root `grail` script. Prefer `python grail …` so the same interpreter as your venv is used.
+:::
+
+
+## Directory structure at a glance
+
+A fresh application looks familiar if you have used Laravel:
+
+```text
+blog/
+  app/
+    http/controllers/
+    models/
+    providers/
+  bootstrap/app.py
+  config/
+  database/migrations/
+  database/seeders/
+  routes/web.py
+  routes/api.py
+  grail
+```
+
+Read more in [Directory Structure](/structure/).
+
+## Database drivers
+
+SQLite works out of the box. For other engines, install the matching optional extra:
+
+```bash
+pip install avalon[pgsql]    # PostgreSQL
+pip install avalon[mysql]    # MySQL / MariaDB
+pip install avalon[sqlsrv]   # SQL Server
+pip install avalon[oracle]   # Oracle (optional)
+pip install avalon[db]       # all of the above
+```
+
+Configure connections in `config/database.py` — see [Database: Getting Started](/database/).
+
+## Next steps
+
+- [Directory Structure](/structure/)
+- [Middleware](/middleware/)
+- [Articulate](/articulate/)

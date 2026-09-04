@@ -1,0 +1,114 @@
+---
+title: Database — Getting Started
+description: Configure database connections and run queries with the DB facade.
+---
+
+Almost every modern web application interacts with a database. Avalon makes this interaction simple through a unified API across supported drivers, a fluent query builder, and **Articulate** — Avalon's Active Record ORM.
+
+## Configuration
+
+Database configuration lives in `config/database.py`. A newly created application is ready to use SQLite. You may also configure PostgreSQL, MySQL / MariaDB, SQL Server, and optionally Oracle.
+
+```python
+# config/database.py
+from avalon.config import env
+
+config = {
+    "default": env("DB_CONNECTION", "sqlite"),
+    "connections": {
+        "sqlite": {
+            "driver": "sqlite",
+            "database": env("DB_DATABASE", "database/database.sqlite"),
+        },
+        "pgsql": {
+            "driver": "pgsql",
+            "host": env("DB_HOST", "127.0.0.1"),
+            "port": env("DB_PORT", "5432"),
+            "database": env("DB_DATABASE", "avalon"),
+            "username": env("DB_USERNAME", "avalon"),
+            "password": env("DB_PASSWORD", ""),
+        },
+    },
+}
+```
+
+Set the active connection in `.env`:
+
+```bash
+DB_CONNECTION=sqlite
+DB_DATABASE=database/database.sqlite
+```
+
+SQLite `:memory:` databases are supported; Avalon uses a static pool so every acquire shares the same in-memory database.
+
+## Installing a driver
+
+SQLite ships with Avalon. Install extras for other engines:
+
+```bash
+pip install avalon[pgsql]    # PostgreSQL (asyncpg)
+pip install avalon[mysql]    # MySQL / MariaDB (aiomysql)
+pip install avalon[sqlsrv]   # SQL Server (aioodbc + ODBC driver)
+pip install avalon[oracle]   # Oracle (optional community niche)
+pip install avalon[db]       # all optional drivers
+```
+
+| `driver` | Async URL | Extra |
+| --- | --- | --- |
+| `sqlite` | `sqlite+aiosqlite:///…` | included |
+| `pgsql` / `postgres` / `postgresql` | `postgresql+asyncpg://…` | `avalon[pgsql]` |
+| `mysql` / `mariadb` | `mysql+aiomysql://…` | `avalon[mysql]` |
+| `sqlsrv` / `mssql` / `sqlserver` | `mssql+aioodbc://…` | `avalon[sqlsrv]` |
+| `oracle` | `oracle+oracledb_async://…?service_name=` | `avalon[oracle]` |
+
+A `url` key on a connection dict is used as-is (sync prefixes are upgraded to async drivers). For SQL Server, set `odbc_driver` (default `ODBC Driver 18 for SQL Server`) and `trust_server_certificate` as needed. For Oracle, prefer `service_name` (or `sid`).
+
+:::note[Oracle]
+Oracle is not a first-party Laravel database driver. Avalon offers it as an optional extra for teams that need it — similar in spirit to community packages such as yajra/laravel-oci8.
+:::
+
+
+## Running raw queries
+
+The `DB` facade gives you a simple way to run queries:
+
+```python
+from avalon.orm import DB
+
+users = await DB.select(
+    "SELECT * FROM users WHERE email = :email",
+    {"email": email},
+)
+row = await DB.select_one("SELECT 1 AS n")
+await DB.statement("DELETE FROM sessions WHERE id = :id", {"id": sid})
+```
+
+You may also start a query builder against a table (results are dictionaries, not models):
+
+```python
+await DB.table("users").where("email", email).get()
+```
+
+## Transactions
+
+```python
+async with DB.transaction():
+    await User.create(email="a@b.c", name="Ada")
+    async with DB.transaction():
+        # Nested transactions use SAVEPOINTs
+        await User.create(email="b@b.c", name="Grace")
+```
+
+## Using multiple connections
+
+```python
+await DB.connection("pgsql").table("users").get()
+```
+
+Pin a Articulate model to a connection with `Model.connection = "pgsql"`. You may also register connections at runtime with `DatabaseManager.add_connection(name, config)` and dispose them with `disconnect()` / `disconnect(name)`.
+
+## Next steps
+
+Prefer the fluent [query builder](/database/queries/) for most reads and writes, and [Articulate models](/articulate/) when you want Active Record persistence and relationships.
+
+Escape hatches (use sparingly): `DB.raw("price * 1.1")` and `await DB.connection().execute(...)`.

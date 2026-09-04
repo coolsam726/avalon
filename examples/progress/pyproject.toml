@@ -13,3 +13,8 @@ dependencies = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["app", "bootstrap", "config", "routes"]
+
+[tool.pylint.basic]
+# Model meta (`fillable`, `casts`) is snake_case by design, not UPPER_CASE.
+class-attribute-rgx = "([a-z_][a-z0-9_]*|[A-Z_][A-Z0-9_]*)$"
+attr-rgx = "([a-z_][a-z0-9_]*|[A-Z_][A-Z0-9_]*)$"

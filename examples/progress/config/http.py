@@ -1,10 +1,12 @@
-"""HTTP kernel configuration."""
-
-from app.Http.Middleware.DemoTagMiddleware import DemoTagMiddleware
+"""HTTP kernel defaults — stacks and aliases are registered in bootstrap/app.py."""
 
 config = {
+    # Global stack (every route). Prefer Application.configure().with_middleware(...).
     "middleware": [],
-    "middleware_aliases": {
-        "demo.tag": DemoTagMiddleware,
+    # Named groups referenced from routes/*.py (`web` / `api`).
+    "middleware_groups": {
+        "web": [],
+        "api": [],
     },
+    "middleware_aliases": {},
 }

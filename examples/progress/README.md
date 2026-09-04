@@ -1,82 +1,165 @@
 # Progress — Avalon living example
 
-Tracks framework milestones as Avalon grows. Update controllers/`/progress` when a milestone lands.
+Progress is created with the **official installer**, then demos are layered with **`python grail make:*`**.
+If something is missing here that a fresh scaffold has, that is a scaffold gap — fix the installer, then re-align Progress.
 
-Canonical plan: [`../../docs/PLAN.md`](../../docs/PLAN.md)
+Canonical plan: [`../../docs/PLAN.md`](../../docs/PLAN.md) · docs: [`../../website/`](../../website/) (`make docs`) · structure: [`structure`](../../website/src/content/docs/structure.md) · middleware: [`middleware`](../../website/src/content/docs/middleware.md)
+
+## Recreate from scratch
+
+```bash
+cd /path/to/avalon
+rm -rf examples/progress
+avalon new progress --path examples
+cd examples/progress
+pip install -e ../.. && pip install -e .
+
+# Generators (same as any app)
+python grail make:middleware DemoTagMiddleware
+python grail make:request StoreItemRequest
+python grail make:controller DemoController
+python grail make:controller ProgressController
+python grail make:controller LocaleController
+python grail make:controller OrmTourController
+python grail make:controller PostController
+python grail make:controller UserController
+python grail make:model User
+python grail make:model Post
+python grail make:model Role
+python grail make:model Comment
+python grail make:migration create_demo_tables
+python grail make:seeder DemoSeeder
+python grail make:lang sw
+
+# Then wire routes, bootstrap middleware, demo bodies, migration `up`/`down`,
+# and DatabaseSeeder.call([DemoSeeder]) (this tree already has those filled in).
+```
 
 ## Run (from monorepo)
 
 ```bash
 cd /path/to/avalon
-source .venv/bin/activate          # framework venv is fine
-pip install -e .                   # ensure avalon is editable
-
+source .venv/bin/activate
+pip install -e .
 cd examples/progress
-pip install -e .                   # installs this app package
+pip install -e .
+python grail migrate --seed
 python grail serve
 ```
 
-Then open another terminal and run the M2 checklist below (use the port `grail serve` prints if not 3000).
+SQLite file: `database/database.sqlite` (gitignored). Same layout as `avalon new`.
+
+Open http://127.0.0.1:3000 (or the port `grail serve` prints). With `APP_BASE_PATH=/avalon`, use http://127.0.0.1:3000/avalon/.
 
 ## M2 manual checklist
+
+`routes/web.py` renders HTML; `routes/api.py` returns JSON. The `api` middleware group carries
+`demo.tag`, so every `/api/*` response (errors included) gets `X-Avalon-Demo`; web pages do not.
 
 ```bash
 BASE=http://127.0.0.1:3000
 
-# Board + welcome
-curl -s "$BASE/" | python -m json.tool
-curl -s "$BASE/progress" | python -m json.tool
+# Browser pages (expect text/html, no X-Avalon-Demo)
+curl -si "$BASE/" | head -n 20
+curl -si "$BASE/progress" | head -n 20
 
-# Group prefix + middleware header (expect X-Avalon-Demo: m2)
-curl -si "$BASE/demo/ping" | head -n 20
+# Stateless API + middleware group header (expect application/json + X-Avalon-Demo)
+curl -si "$BASE/api/health" | head -n 20
+curl -s "$BASE/api/progress" | python -m json.tool
 
 # Path params, query, bearer, only()
-curl -s "$BASE/demo/items/42?q=hello" -H "Authorization: Bearer secret" | python -m json.tool
+curl -s "$BASE/api/items/42?q=hello" -H "Authorization: Bearer secret" | python -m json.tool
 
 # Request bag (all/query/post — body wins on key clashes)
-curl -s -X POST "$BASE/demo/bag?q=1" -H "Content-Type: application/json" \
+curl -s -X POST "$BASE/api/bag?q=1" -H "Content-Type: application/json" \
   -d '{"name":"bag","q":"body"}' | python -m json.tool
 
 # Container DI into controller action
-curl -s "$BASE/demo/di" | python -m json.tool
+curl -s "$BASE/api/di" | python -m json.tool
 
 # Verbs
-curl -s -X POST "$BASE/demo/items" -H "Content-Type: application/json" \
+curl -s -X POST "$BASE/api/items" -H "Content-Type: application/json" \
   -d '{"name":"avalon","flag":true,"count":2}' | python -m json.tool
-curl -s -X PUT "$BASE/demo/items/42" | python -m json.tool
-curl -s -X PATCH "$BASE/demo/items/42" | python -m json.tool
-curl -s -X DELETE "$BASE/demo/items/42" | python -m json.tool
-curl -s -X OPTIONS "$BASE/demo/probe" | python -m json.tool
+curl -s -X PUT "$BASE/api/items/42" | python -m json.tool
+curl -s -X PATCH "$BASE/api/items/42" | python -m json.tool
+curl -s -X DELETE "$BASE/api/items/42" | python -m json.tool
+curl -s -X OPTIONS "$BASE/api/probe" | python -m json.tool
 
 # Validation-shaped HttpException (422)
-curl -s -X POST "$BASE/demo/items" -H "Content-Type: application/json" -d '{}' | python -m json.tool
+curl -s -X POST "$BASE/api/items" -H "Content-Type: application/json" -d '{}' | python -m json.tool
 
-# HttpException JSON shape
-curl -s "$BASE/demo/boom" | python -m json.tool
-curl -s "$BASE/demo/missing" | python -m json.tool
+# HttpException JSON shape — note middleware headers still apply
+curl -si "$BASE/api/boom" | head -n 20
+curl -s "$BASE/api/missing" | python -m json.tool
 
-# Second routes file (routes/api.py) + match()
-curl -si "$BASE/api/health" | head -n 20
+# match()
 curl -s "$BASE/api/echo/7?q=api" | python -m json.tool
+```
+
+## M3 checklist — validation + URLs
+
+`POST /api/items` is backed by `StoreItemRequest`, so validation runs before the controller.
+
+```bash
+# Types coerced from strings; defaults filled in
+curl -s -X POST "$BASE/api/items" -H 'Content-Type: application/json' \
+  -d '{"name":"avalon","count":"3","flag":"true"}' | python -m json.tool
+
+# 422 with Laravel-shaped messages; attributes() renames count -> "item count"
+curl -s -X POST "$BASE/api/items" -H 'Content-Type: application/json' \
+  -d '{"name":"a","count":0,"tags":"nope"}' | python -m json.tool
+
+# authorize() returning False -> 403
+curl -s -X POST "$BASE/api/items" -H 'Content-Type: application/json' \
+  -H 'X-Demo-Forbid: 1' -d '{"name":"avalon"}' | python -m json.tool
+
+# Set APP_BASE_PATH=/avalon in .env and restart: open http://127.0.0.1:3000/avalon/
+# (site root redirects there). Links and the ASGI mount share the same prefix.
+```
+
+## M4 checklist — locale
+
+```bash
+curl -s "$BASE/api/locale" -H 'Accept-Language: en' | python -m json.tool
+curl -s "$BASE/api/locale?count=1&name=Ada" -H 'Accept-Language: sw' | python -m json.tool
+```
+
+## M5 checklist — ORM
+
+```bash
+curl -s "$BASE/api/orm" | python -m json.tool
+curl -s "$BASE/api/posts" | python -m json.tool
+curl -s "$BASE/api/posts/pages?page=1&per_page=1" | python -m json.tool
+curl -s "$BASE/api/posts/trashed" | python -m json.tool
+curl -s "$BASE/api/users" | python -m json.tool
+curl -s "$BASE/api/users/1/posts" | python -m json.tool
+curl -s -X POST "$BASE/api/users/upsert" -H 'Content-Type: application/json' \
+  -d '{"email":"ada@avalon.dev","name":"Ada Lovelace"}' | python -m json.tool
+curl -s "$BASE/api/posts/1/comments" | python -m json.tool
 ```
 
 ## What this proves today
 
 | Milestone | Visible here |
 | --- | --- |
-| **M0** | App created with `avalon new`, `python grail serve`, layout |
-| **M1** | `Application.bootstrap()`, `config()`, providers, `.env` |
-| **M2** | Route DSL, middleware, verbs, **Request bag** (`all`/`query`/`post`/`only`/`except_`), container DI, `HttpException` — `/demo/*`, `/api/*` |
+| **M0** | `avalon new` + `python grail serve` |
+| **M1** | `Application.configure().create()`, `config()`, providers, `.env` |
+| **M2** | Route DSL, groups, middleware (bootstrap fluent), verbs, Request bag, DI, HttpException |
+| **M3** | `StoreItemRequest`, 422/403, `url()` + ASGI mount for `APP_BASE_PATH` |
+| **M4** | `/api/locale` in `en` / `sw`; `grail lang:*` |
+| **M5** | `database/migrations` + `/api/orm` tour — migrate/seed, relations, soft deletes, upsert |
 
 ## Growing with Avalon
 
-M2 Request parity is live: routes in `routes/web.py` + `routes/api.py`, middleware alias `demo.tag`, Laravel-style `Request` helpers, bootstrap only exposes `application.asgi` (no FastAPI imports). FormRequest + `python grail make:*` wait for M3.
+M0–M5 are closed. Next is **M6 — Caliburn**.
 
 ## CLI
 
 ```bash
 python grail version
+python grail migrate
+python grail migrate:status
 python grail serve
 ```
 
-Create more apps with `avalon new` from the framework install — not with Grail.
+Create more apps with `avalon new` — not with Grail.

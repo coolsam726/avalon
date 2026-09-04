@@ -11,7 +11,7 @@ from typer.testing import CliRunner
 
 from avalon.installer.cli import app as avalon_app
 from avalon.installer.scaffold import scaffold_app
-from tests.support import purge_generated_app_modules
+from tests.support import purge_generated_app_modules, without_base_path
 
 pytestmark = [pytest.mark.smoke, pytest.mark.regression]
 
@@ -23,11 +23,24 @@ def test_m2_s1_scaffold_uses_route_dsl(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.stdout
     root = tmp_path / "route_app"
     web = (root / "routes" / "web.py").read_text(encoding="utf-8")
+    api = (root / "routes" / "api.py").read_text(encoding="utf-8")
+    http_config = (root / "config" / "http.py").read_text(encoding="utf-8")
     bootstrap = (root / "bootstrap" / "app.py").read_text(encoding="utf-8")
     assert "Route.get" in web
     assert "from fastapi" not in bootstrap
     assert "application.asgi" in bootstrap
-    assert (root / "config" / "http.py").is_file()
+    assert "Application.configure" in bootstrap
+    assert "with_middleware" in bootstrap
+    # Route polarity: web groups render HTML, api groups return JSON.
+    assert 'middleware=["web"]' in web
+    assert 'prefix="/api", middleware=["api"]' in api
+    # Locale resolution ships via bootstrap fluent middleware (M4).
+    assert "SetLocaleMiddleware" in bootstrap
+    assert 'append=["locale"]' in bootstrap
+    assert '"web": []' in http_config
+    assert '"api": []' in http_config
+    assert (root / "lang" / "en" / "messages.py").is_file()
+    assert "APP_LOCALE=" in (root / ".env").read_text(encoding="utf-8")
 
 
 def test_m2_s2_progress_routes_via_kernel(
@@ -45,9 +58,16 @@ def test_m2_s2_progress_routes_via_kernel(
         module = importlib.import_module("bootstrap.app")
         assert module.application.is_bootstrapped
         client = TestClient(module.asgi)
-        response = client.get("/")
-        assert response.status_code == 200
-        assert "Welcome to Avalon" in response.json()["message"]
+
+        page = client.get("/")
+        assert page.status_code == 200
+        assert page.headers["content-type"].startswith("text/html")
+        assert "Welcome to Avalon" in page.text
+
+        health = client.get("/api/health")
+        assert health.status_code == 200
+        assert health.headers["content-type"].startswith("application/json")
+        assert health.json()["status"] == "ok"
         # Ensure no FastAPI in generated bootstrap
         assert "from fastapi" not in (root / "bootstrap" / "app.py").read_text(encoding="utf-8")
     finally:
@@ -64,26 +84,45 @@ def test_m2_s3_progress_example_exhausts_http_surface(
     monkeypatch.chdir(root)
     monkeypatch.syspath_prepend(str(root))
     monkeypatch.delenv("APP_NAME", raising=False)
+    without_base_path(monkeypatch)
     try:
         module = importlib.import_module("bootstrap.app")
         client = TestClient(module.asgi, raise_server_exceptions=False)
 
+        # Web routes: HTML, no api middleware.
         home = client.get("/")
         assert home.status_code == 200
-        assert home.json()["links"]["demo_ping"] == "/demo/ping"
+        assert home.headers["content-type"].startswith("text/html")
+        assert "<h1>Avalon progress tracker</h1>" in home.text
+        assert "x-avalon-demo" not in home.headers
 
         board = client.get("/progress")
         assert board.status_code == 200
-        assert board.json()["milestones"][2]["id"] == "M2"
-        assert board.json()["milestones"][2]["status"] == "complete"
+        assert board.headers["content-type"].startswith("text/html")
+        assert "<h1>Milestones</h1>" in board.text
+        assert "M2" in board.text
 
-        ping = client.get("/demo/ping")
+        # API routes: JSON, `api` middleware group expands to the demo.tag alias.
+        # /api/health matches the scaffold HealthController; /api/ping keeps the M2 demo.
+        health = client.get("/api/health")
+        assert health.status_code == 200
+        assert health.headers["content-type"].startswith("application/json")
+        assert health.json()["status"] == "ok"
+        assert health.json()["app"] == "Progress"
+        assert health.headers.get("x-avalon-demo") == "m2"
+        assert health.headers.get("x-avalon-path") == "/api/health"
+
+        ping = client.get("/api/ping")
         assert ping.status_code == 200
         assert ping.json() == {"demo": "ping", "via": "controller"}
         assert ping.headers.get("x-avalon-demo") == "m2"
-        assert ping.headers.get("x-avalon-path") == "/demo/ping"
 
-        show = client.get("/demo/items/42?q=hello", headers={"Authorization": "Bearer secret"})
+        data = client.get("/api/progress")
+        assert data.headers["content-type"].startswith("application/json")
+        assert data.json()["milestones"][2]["id"] == "M2"
+        assert data.json()["milestones"][2]["status"] == "complete"
+
+        show = client.get("/api/items/42?q=hello", headers={"Authorization": "Bearer secret"})
         assert show.status_code == 200
         assert show.json()["item"] == "42"
         assert show.json()["route"] == "42"
@@ -91,14 +130,14 @@ def test_m2_s3_progress_example_exhausts_http_surface(
         assert show.json()["bearer"] == "secret"
         assert show.json()["only_q"] == {"q": "hello"}
 
-        created = client.post("/demo/items", json={"name": "avalon", "flag": True, "count": 2})
+        created = client.post("/api/items", json={"name": "avalon", "flag": True, "count": 2})
         assert created.status_code == 200
         assert created.json()["created"] is True
         assert created.json()["name"] == "avalon"
         assert created.json()["boolean_flag"] is True
         assert created.json()["integer_count"] == 2
 
-        bag = client.post("/demo/bag?q=1", json={"name": "bag", "q": "body"})
+        bag = client.post("/api/bag?q=1", json={"name": "bag", "q": "body"})
         assert bag.status_code == 200
         assert bag.json()["all"]["q"] == "body"
         assert bag.json()["query"]["q"] == "1"
@@ -106,35 +145,34 @@ def test_m2_s3_progress_example_exhausts_http_surface(
         assert bag.json()["has_name"] is True
         assert bag.json()["is_json"] is True
 
-        di = client.get("/demo/di")
+        di = client.get("/api/di")
         assert di.status_code == 200
         assert di.json()["injected"] == "ConfigRepository"
         assert di.json()["app_name"]
 
-        assert client.put("/demo/items/7").json() == {"updated": "7"}
-        assert client.patch("/demo/items/7").json() == {"patched": "7"}
-        assert client.delete("/demo/items/7").json() == {"deleted": "7"}
-        assert client.options("/demo/probe").json()["allow"].startswith("GET")
+        assert client.put("/api/items/7").json() == {"updated": "7"}
+        assert client.patch("/api/items/7").json() == {"patched": "7"}
+        assert client.delete("/api/items/7").json() == {"deleted": "7"}
+        assert client.options("/api/probe").json()["allow"].startswith("GET")
+        assert client.get("/api/echo/9?q=api").json()["item"] == "9"
 
-        invalid = client.post("/demo/items", json={})
+        invalid = client.post("/api/items", json={})
         assert invalid.status_code == 422
         assert invalid.json()["status"] == 422
         assert "name" in invalid.json()["errors"]
 
-        boom = client.get("/demo/boom")
+        # Error responses still pass back through the route middleware.
+        boom = client.get("/api/boom")
         assert boom.status_code == 418
         assert boom.json() == {"message": "Intentional demo failure", "status": 418}
+        assert boom.headers.get("x-avalon-demo") == "m2"
 
-        missing = client.get("/demo/missing")
+        missing = client.get("/api/missing")
         assert missing.status_code == 404
         assert missing.json()["message"] == "Demo resource not found"
 
-        health = client.get("/api/health")
-        assert health.status_code == 200
-        assert health.headers.get("x-avalon-demo") == "m2"
-        assert client.get("/api/echo/9?q=api").json()["item"] == "9"
-
         assert "from fastapi" not in (root / "bootstrap" / "app.py").read_text(encoding="utf-8")
         assert "from fastapi" not in (root / "routes" / "web.py").read_text(encoding="utf-8")
+        assert "from fastapi" not in (root / "routes" / "api.py").read_text(encoding="utf-8")
     finally:
         purge_generated_app_modules()
