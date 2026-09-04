@@ -36,7 +36,7 @@ from avalon.routing import asset
 asset("css/app.css")
 ```
 
-See [Asset Bundling](/assets/).
+See [Asset Bundling](/asset-bundling/).
 
 ## `redirect()`
 
@@ -62,5 +62,5 @@ Templates receive `url` and `asset` automatically:
 ## Related
 
 - [Routing](/routing/)
-- [Asset Bundling](/assets/)
+- [Asset Bundling](/asset-bundling/)
 - [Responses](/responses/)

@@ -85,7 +85,7 @@ export default defineConfig({
 						{ label: 'Requests', slug: 'requests' },
 						{ label: 'Responses', slug: 'responses' },
 						{ label: 'Views', slug: 'views' },
-						{ label: 'Asset Bundling', slug: 'assets' },
+						{ label: 'Asset Bundling', slug: 'asset-bundling' },
 						{ label: 'URL Generation', slug: 'urls' },
 						{ label: 'Session', slug: 'session' },
 						{ label: 'Validation', slug: 'validation' },

@@ -54,5 +54,5 @@ This Basics page is the entry point. Full Caliburn documentation lives in its ow
 ## Related
 
 - [Responses](/responses/)
-- [Asset Bundling](/assets/)
+- [Asset Bundling](/asset-bundling/)
 - [URL Generation](/urls/)

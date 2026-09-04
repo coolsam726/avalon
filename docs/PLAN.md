@@ -224,7 +224,7 @@ Mirror Laravel’s Basics **order and coverage**. Deep Caliburn how-tos stay in 
 | Responses | `responses` | **Shipped (M2)** — `Response`, `html()`, JSON polarity | **Done** |
 | Views | `views` | **Shipped (M6)** — `view()` / `ViewFactory` | **Done** — overview + link to Caliburn |
 | Blade Templates | *(Caliburn section)* | **Shipped (M6)** | **Done** as Caliburn group (not duplicated under Basics) |
-| Asset Bundling | `assets` | **Partial (M6)** — `asset()` / `@asset` + `public/` on `grail serve`; Vite/Tailwind = **starter kits** | **Done** — honest “no Vite in core” page |
+| Asset Bundling | `asset-bundling` | **Partial (M6)** — `asset()` / `@asset` + `public/` on `grail serve`; Vite/Tailwind = **starter kits** | **Done** — honest “no Vite in core” page |
 | URL Generation | `urls` | **Partial (M3)** — `url()`, `asset()`, `redirect()`; named `route()` = Later | **Done** |
 | Session | `session` | **M7** | **Placeholder** (honest M7 page) |
 | Validation | `validation` | **Shipped (M3)** — `FormRequest` | **Done** |
