@@ -1,0 +1,8 @@
+@props({})
+<article class="feature" {{ attributes }}>
+  <h3>{{ title }}</h3>
+  <div>{{ slot }}</div>
+  @if('footer' in slots)
+    <p class="hint" style="margin-top:0.75rem">{{ footer }}</p>
+  @endif
+</article>

@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from app.support.page import layout
-
 from avalon import __version__
+from avalon.caliburn import view
 from avalon.config import config
-from avalon.http import Controller, Response, html
+from avalon.http import Controller, Response
 from avalon.routing import url
 
 
@@ -79,7 +78,12 @@ def _milestones() -> list[dict]:
             "id": "M6",
             "name": "Caliburn",
             "status": "next",
-            "proof": [".cal.html", "@python blocks", "featherweight render"],
+            "proof": [
+                ".cal.html layouts + @foreach",
+                "components / slots / @props",
+                "@push / @stack / @parent",
+                "view()",
+            ],
         },
         {
             "id": "M7",
@@ -130,24 +134,22 @@ def _board() -> dict:
 class ProgressController(Controller):
     async def index(self) -> Response:
         board = _board()
-        rows = "\n".join(
-            f"""    <tr>
-      <td><strong>{m["id"]}</strong></td>
-      <td>{m["name"]}</td>
-      <td class="{m["status"]}">{m["status"]}</td>
-      <td>{", ".join(m["proof"])}</td>
-    </tr>"""
+        milestones = [
+            {**m, "proof_text": ", ".join(m["proof"])}
             for m in board["milestones"]
+        ]
+        return view(
+            "progress",
+            {
+                "completed": board["completed"],
+                "total": board["total"],
+                "version": board["version"],
+                "milestones": milestones,
+                "home_url": url("/", absolute=False),
+                "api_url": url("/api/progress", absolute=False),
+                "version": board["version"],
+            },
         )
-        body = f"""  <h1>Milestones</h1>
-  <p>{board["completed"]} of {board["total"]} complete on Avalon {board["version"]}.</p>
-  <table>
-    <tr><th>ID</th><th>Milestone</th><th>Status</th><th>Proof</th></tr>
-{rows}
-  </table>
-  <p><a href="{url("/", absolute=False)}">Back</a> — same data as JSON at
-  <code>{url("/api/progress", absolute=False)}</code>.</p>"""
-        return html(layout("Milestones — Avalon", body))
 
     async def data(self) -> dict:
         return _board()

@@ -29,7 +29,7 @@ jobs:
         run: pytest -q tests/smoke -m smoke
 
   test:
-    name: Unit + coverage ≥95%
+    name: Unit + coverage ≥98%
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

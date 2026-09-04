@@ -83,7 +83,8 @@ def test_m2_s3_progress_example_exhausts_http_surface(
     purge_generated_app_modules()
     monkeypatch.chdir(root)
     monkeypatch.syspath_prepend(str(root))
-    monkeypatch.delenv("APP_NAME", raising=False)
+    # Process env wins over .env (override=False) — pin the living-example name.
+    monkeypatch.setenv("APP_NAME", "Progress")
     without_base_path(monkeypatch)
     try:
         module = importlib.import_module("bootstrap.app")
@@ -93,13 +94,13 @@ def test_m2_s3_progress_example_exhausts_http_surface(
         home = client.get("/")
         assert home.status_code == 200
         assert home.headers["content-type"].startswith("text/html")
-        assert "<h1>Avalon progress tracker</h1>" in home.text
+        assert "<h1>Progress tracker</h1>" in home.text
         assert "x-avalon-demo" not in home.headers
 
         board = client.get("/progress")
         assert board.status_code == 200
         assert board.headers["content-type"].startswith("text/html")
-        assert "<h1>Milestones</h1>" in board.text
+        assert "<h2>Milestones</h2>" in board.text
         assert "M2" in board.text
 
         # API routes: JSON, `api` middleware group expands to the demo.tag alias.

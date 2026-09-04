@@ -110,13 +110,15 @@ def set_name_attribute(self, value: str) -> str:
 | Laravel Eloquent | Articulate |
 | --- | --- |
 | Synchronous | Every read/write is `await`ed |
-| Lazy load on `$user->posts` | **No lazy loading.** Unloaded `user.posts` raises; use `await user.posts().get()` or eager-load with `with_` |
+| Lazy load on `$user->posts` | **Off by default.** Unloaded `user.posts` raises. Opt in with `lazy_relations = True` so `await user.posts` loads; or use `with_` / `await user.posts().get()` |
 | `where("col", val)` or `where("col", ">", val)` | Same rules; two-arg form is **only** the `=` shortcut |
 | `MassAssignmentException` | `MassAssignmentError` |
 | `php artisan migrate` | `python grail migrate` |
 
 :::tip[N+1 safety]
-Failing loud on unloaded relations is intentional. Prefer `with_` / `load` so you never accidentally query inside a loop.
+Failing loud on unloaded relations is the default. Prefer `with_` / `load` on list
+endpoints. If you want Laravel-shaped late loading, set `lazy_relations = True` and
+**await** the relation (`posts = await user.posts`) — never silent attribute IO.
 :::
 
 

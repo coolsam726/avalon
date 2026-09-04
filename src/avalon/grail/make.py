@@ -150,6 +150,86 @@ _STUBS = {
 }
 
 
+def _component_stub(name: str) -> str:
+    """Anonymous Caliburn component under resources/views/components."""
+    return f'''@props({{}})
+{{{{-- {name} — anonymous Caliburn component --}}}}
+<div {{{{ attributes }}}}>
+  {{{{ slot }}}}
+</div>
+'''
+
+
+def _component_class_stub(class_name: str, view_name: str) -> str:
+    return f'''"""{class_name} view component."""
+
+from __future__ import annotations
+
+from avalon.caliburn import Component
+
+
+class {class_name}(Component):
+    """{class_name}."""
+
+    def __init__(self) -> None:
+        pass
+
+    def render(self) -> str:
+        return "{view_name}"
+'''
+
+
+def make_component(
+    name: str,
+    *,
+    base_path: Path,
+    force: bool = False,
+    class_based: bool = False,
+) -> Path:
+    """Create an anonymous view component, optionally with a class.
+
+    Returns the path to the ``.cal.html`` template (class path is a sibling
+    under ``app/view/components`` when ``class_based`` is true).
+    """
+    from avalon.orm.inflector import studly
+
+    parts = [part for part in name.replace("\\", "/").split("/") if part]
+    if not parts:
+        raise MakeError("A component name is required.")
+    for part in parts:
+        if not _SEGMENT_RE.match(part):
+            raise MakeError(
+                f"Invalid name segment {part!r}. Use letters, numbers, and underscores; "
+                "must start with a letter."
+            )
+    rel_parts = tuple(snake(part) for part in parts)
+    directory = base_path.joinpath("resources", "views", "components", *rel_parts[:-1])
+    target = directory / f"{rel_parts[-1]}.cal.html"
+    if target.exists() and not force:
+        raise MakeError(f"{target.relative_to(base_path)} already exists. Use --force to overwrite.")
+    directory.mkdir(parents=True, exist_ok=True)
+    display = "/".join(rel_parts)
+    view_name = "components." + ".".join(rel_parts)
+    target.write_text(_component_stub(display), encoding="utf-8")
+
+    if class_based:
+        class_name = studly(rel_parts[-1])
+        class_dir = base_path.joinpath("app", "view", "components", *rel_parts[:-1])
+        class_path = class_dir / f"{rel_parts[-1]}.py"
+        if class_path.exists() and not force:
+            raise MakeError(
+                f"{class_path.relative_to(base_path)} already exists. Use --force to overwrite."
+            )
+        class_dir.mkdir(parents=True, exist_ok=True)
+        _ensure_packages(base_path, ("app", "view", "components") + rel_parts[:-1])
+        class_path.write_text(
+            _component_class_stub(class_name, view_name),
+            encoding="utf-8",
+        )
+
+    return target
+
+
 def _split(name: str) -> tuple[tuple[str, ...], str]:
     parts = [part for part in name.replace("\\", "/").split("/") if part]
     if not parts:

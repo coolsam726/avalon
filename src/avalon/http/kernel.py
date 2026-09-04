@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib
 import inspect
 from collections.abc import Awaitable, Callable, Sequence
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, get_type_hints
 
 from fastapi import FastAPI
@@ -70,6 +71,21 @@ class HttpKernel:
 
         for route in self.router.routes:
             self._register_route(asgi, route)
+
+        # Dev/DX: files under public/{css,js,images,fonts,build}/ map to /{dir}/…
+        # Production may still front this with a CDN/proxy; starter kits own bundlers.
+        public_dir = Path(self.app.base_path) / "public"
+        if public_dir.is_dir():
+            from fastapi.staticfiles import StaticFiles
+
+            for folder in ("css", "js", "images", "fonts", "build"):
+                directory = public_dir / folder
+                if directory.is_dir():
+                    asgi.mount(
+                        f"/{folder}",
+                        StaticFiles(directory=str(directory)),
+                        name=f"public-{folder}",
+                    )
 
         from avalon.http.subpath import mount_asgi
 

@@ -180,7 +180,7 @@ Sync Eloquent-style calls are **not** offered — a hidden sync bridge under asy
 2. **Model:** table/key inference, `fillable`/`guarded` + `MassAssignmentException`, `casts`, defaults, accessors/mutators, dirty tracking (`is_dirty` / `get_changes` / `get_original`), timestamps, `hidden`/`visible`/`appends`, `to_dict`/`to_json`, `save`/`update`/`delete`/`refresh`/`replicate`/`is_`
 3. **Builder:** full `where` family (in / null / between / date parts / column / like / nested closures / or-variants), ordering, grouping + having, limit/offset, select + distinct + raw, joins, aggregates, `pluck`/`value`, `exists`, `find_or_fail`, `first_or_create`, `update_or_create`, `increment`/`decrement`, dialect-native `upsert` (SQLite/PG `ON CONFLICT`, MySQL `ON DUPLICATE KEY`; probe fallback otherwise), `chunk`/`cursor`/`each`, `when`/`unless`, `to_sql`
 4. **Relationships:** `has_one`, `has_many`, `belongs_to`, `belongs_to_many` (pivot columns, `attach`/`detach`/`sync`/`toggle`), `has_one_through`, `has_many_through`, polymorphic (`morph_one`, `morph_many`, `morph_to`, `morph_to_many`, `morphed_by_many`)
-5. **Eager loading:** `with_` (nested + constrained), `with_count`, lazy `load` / `load_missing`, `has` / `doesnt_have` / `where_has` / `where_doesnt_have`
+5. **Eager loading:** `with_` (nested + constrained), `with_count`, lazy `load` / `load_missing`, `has` / `doesnt_have` / `where_has` / `where_doesnt_have`. **Attribute lazy-load is off by default** (unloaded `model.rel` raises). Opt in with `Model.lazy_relations = True` so `await model.rel` loads — still an explicit `await`, never hidden sync IO on attribute access.
 6. **Collections:** Eloquent-shaped `Collection` returned from every multi-row read
 7. **Scopes & lifecycle:** local scopes, global scopes, soft deletes (`trashed` / `with_trashed` / `only_trashed` / `restore` / `force_delete`), model events + observers
 8. **Pagination:** `paginate` / `simple_paginate` with a JSON-serializable paginator
@@ -211,16 +211,39 @@ Do not invent a second docs engine; extend the Starlight site.
 
 ## Decision: Views — Caliburn
 
+Caliburn is a **first-class view engine for Python**, not a thin wrapper around Jinja or FastAPI templates. **M6 exhausts full Laravel Blade parity** for the documented surface — the same exhaust rule as Articulate and localization. A partial “MVP forever” exit is not allowed.
+
 | Item | Choice |
 | --- | --- |
 | Product name | Caliburn |
 | Package | `avalon.caliburn` |
 | Template extension | **`.cal.html`** |
 | Inline code | **`@python` / `@endpython` only** (no freeform Python embedding) |
-| DX north star | Blade-familiar directives (Edge-style iteration) |
+| DX north star | **Full Blade parity** — layouts, inheritance, components, slots, directives |
 | Performance north star | **Featherweight** — first-class constraint |
+| Docs | **Own Starlight section** (`website/…/caliburn/`) — thorough, Laravel Blade–shaped; write pages as surfaces ship |
 
 Logic belongs in controllers, view models, and composers. `@python` is an escape hatch, not the default style.
+
+### Parity target (binding)
+
+Match Blade’s mental model end-to-end for app authors:
+
+1. **Echo & comments** — `{{ }}` (escaped), `{!! !!}` (raw), `{{-- --}}`
+2. **Layout inheritance** — `@extends`, `@section` / `@endsection` / `@show`, `@yield`, `@parent`, `@include` / `@includeIf` / `@includeWhen` / `@each`
+3. **Control flow** — `@if` / `@elseif` / `@else` / `@unless` / `@isset` / `@empty` / `@auth` / `@guest` (auth wired when M7 exists; stubs/no-ops until then where needed), `@for` / `@foreach` / `@forelse` / `@while`, `@php` → **`@python` / `@endpython`**
+4. **Components & slots** — class-based and anonymous components, `<x-name>` / `@component`, **slots** (`@slot`, `$slot`, named slots), attribute bags (`$attributes`), `@props`, `@aware`
+5. **Stacks** — `@push` / `@prepend` / `@stack` / `@once`
+6. **Framework directives** — `@csrf`, `@error`, `@lang` / `@choice` / `__()`, `@vite`-class asset helpers as `asset()` / `@asset` (subpath-aware from day one). **No Node/Vite/Tailwind in framework core** — M6 owns URL helpers + `public/` serving for `grail serve`; starter kits own the JS/CSS compile toolchain and emit into `public/` (or `public/build/`)
+7. **Extensibility** — `Engine.directive(...)` / service-provider registration for **custom `@directive`s**; app-owned Blade-style component libraries under `resources/views/components`
+8. **Tooling** — `view()`, `ViewFactory`, compiled view cache, `grail view:clear` / `view:cache` when the console kernel can host them (M9); until then engine APIs + tests
+
+**Rules:**
+
+- Compile ahead, render thin — no re-lex/parse on the request hot path.
+- XSS defaults match Blade: escape by default; raw is explicit.
+- Caliburn templates are Avalon’s own (`.cal.html`), not “Jinja with Blade lipstick.”
+- Do not claim M6 complete until the parity ladder below is exhausted **and** the Caliburn docs section covers it for app developers.
 
 ### Performance principles (non-negotiable)
 
@@ -228,17 +251,30 @@ Logic belongs in controllers, view models, and composers. `@python` is an escape
 - **Aggressive compiled-cache** — mtime invalidate in dev; warm cache in prod
 - **Minimal runtime** — thin dependency graph on the hot path
 - **Zero-cost unused features**
-- **Benchmark from MVP** — echo, layout+sections, foreach; regression guards
+- **Benchmark from day one** — echo, layout+sections, foreach, components; regression guards
 - **Compare honestly** — Caliburn vs Jinja2 on shared fixtures
 
-### Iteration ladder
+### Iteration ladder (exhaust inside M6)
 
-1. **MVP:** `{{ }}`, `{!! !!}`, `@extends` / `@section` / `@yield`, `@include`, `{{-- --}}`
-2. **Control flow:** `@if`, `@unless`, `@foreach`, `@forelse`, `@for`, `@while`, `@python`
-3. **Components:** `@component` / `<x-*>`, slots, attributes
-4. **Framework directives:** `@csrf`, `@auth`, `@guest`, `@error`, `@lang`, `@choice`, `__()`, asset helpers
-5. **Advanced:** composers, creators, fragment caching, custom `@directive`
+1. **Layouts & echo:** `{{ }}`, `{!! !!}`, `@extends` / `@section` / `@yield` / `@parent`, `@include*` / `@each`, `{{-- --}}` — **shipped (advanced include variants)**
+2. **Control flow:** `@if` family, `@isset` / `@empty(expr)`, `@foreach` / `@forelse` / `@for` / `@while`, `@auth` / `@guest` stubs, `@python` — **shipped**
+3. **Components & slots:** `@component` / `<x-*>`, named + default slots, `<x-slot>`, attribute bags, `@props`, `@aware`, class-based `Component`, nested components
+4. **Stacks + framework directives:** `@push` / `@stack`, `@lang` / `@choice` / `__()`, `@csrf` / `@error` / `@asset` stubs, asset helpers — **shipped (advanced surfaces)**
+5. **Advanced:** composers, creators, fragment `@cache`, custom `Engine.directive`, `cache_views` / `clear_cache` — **shipped**
 
+### Documentation (binding)
+
+Ship a dedicated **Caliburn** sidebar group (peer to Articulate / Database), Laravel Blade–shaped topics, for example:
+
+- Getting Started / Rendering Views
+- Layouts & Inheritance
+- Components & Slots
+- Control Structures
+- Including Subviews
+- Stacks & Custom Directives
+- Localization in views (`@lang` / `__`)
+
+Pages land as each ladder rung ships — do not wait for M6 close to start the section.
 ## Decision: Scope discipline
 
 Bite-sized milestones. **No** queues, notifications, scheduler, or mail until the **HTTP + validation + i18n + ORM + views + auth** core path is boring and tested (through M7). Seeders ship with M5 ORM; **model factories follow later** (still binding — they are how seeders scale). Caliburn is its own track after the core gate. Error handling, console (incl. a Tinker-class REPL), filesystem, and queues are sketched as **M8–M11** so the roadmap is honest — they are not next work. Multi-version docs + Prologue stay on the docs track (see Documentation site decision).
@@ -493,7 +529,7 @@ That is the floor. It is deliberately not a handler layer: there is no app-level
 - **`python grail serve`** runs Uvicorn against `bootstrap.app:asgi` (M0 minimal FastAPI entry; Avalon HTTP kernel replaces this in M2)
 - pytest harness + GitHub Actions CI (Python 3.11–3.13)
 - Smoke plan: [`docs/SMOKE.md`](SMOKE.md); automated suite under `tests/smoke/`
-- Coverage gate: **≥ 95%** (`pytest-cov`, enforced in CI; raise later)
+- Coverage gate: **≥ 98%** on full `avalon` (`pytest-cov` in CI); **always aim for 100%**, especially on the package under the active milestone (Caliburn: `make test-cov-caliburn`).
 
 ### M1 — Application kernel — **complete**
 
@@ -576,13 +612,20 @@ Full Eloquent parity — see the ORM decision above for the binding ladder. M5 e
 
 ### M6 — Caliburn (`avalon.caliburn`)
 
-- MVP: `.cal.html`, layouts + echo + include, compile-to-Python + cache
-- Wire `view()` via provider; optional extra `avalon[caliburn]`
-- Replace hand-built web HTML strings with Caliburn where the example needs templates
-- **i18n (required):** `@lang` / `@choice` / `__()` directives wired to `avalon.translation` — M4's translator is not optional for views
-- Benchmark suite from day one; continue parity ladder without blocking auth
-- **Subpath:** asset helpers + smoke that an app under `APP_BASE_PATH` serves correct asset/URLs
+**Full Blade parity** — see the Views decision. M6 exhausts that ladder; it is a major product surface (a new Python view engine), not a stopgap.
+
+- Compile-to-Python + mtime/warm cache; `view()` / `ViewFactory` via provider (`avalon[caliburn]` extra may stay empty while Caliburn is core)
+- Layout inheritance, includes, control flow, **components & slots**, stacks, custom directives
+- Replace hand-built web HTML in the living example with `.cal.html` (including componentized UI where it pays off)
+- **i18n (required):** `@lang` / `@choice` / `__()` wired to `avalon.translation`
+- **Docs (required):** dedicated Starlight **Caliburn** section — thorough how-tos, not a single stub page
+- Benchmark suite from day one; continue parity without blocking auth
+- **Subpath:** asset helpers + smoke under `APP_BASE_PATH`
 - XSS defaults: escaped `{{ }}` vs raw `{!! !!}`
+- **Tooling:** `grail make:component` (anonymous `.cal.html` under `resources/views/components`)
+- **Assets (M6 vs starter kits):** `asset()` / `@asset` + serve `public/` in `grail serve`. Compilation (Vite, esbuild, Tailwind, Alpine, …) lives in **starter kits**, not `avalon.caliburn`. Progress may use plain CSS/JS in `public/` to exercise helpers without a Node toolchain.
+
+**Gate:** ladder exhausted, Caliburn docs section covers shipped surfaces, progress example is Caliburn-first, coverage **100%** on `avalon.caliburn` (statements + branches on the M6 test suite). Real `@csrf` / `@auth` / `@guest` token wiring waits on M7 sessions; `grail view:*` CLI waits on M9 console kernel (engine `cache_views` / `clear_cache` APIs ship now).
 
 ### M7 — `avalon.auth`
 
@@ -670,11 +713,11 @@ FlySystem-shaped **Storage** façade — app code never talks to raw `pathlib` f
 - Docs per milestone: mental model + engine mapping in the Starlight site [`website/`](../website/) (write the page when the feature ships; `PLAN.md` stays the contract)
 - Stable `avalon.*` imports; no Starlette/FastAPI types in happy-path app code
 - Caliburn: golden fixtures + render benchmarks with regression guards
-- **Coverage ≥ 95%** on `avalon` (CI fail-under on full suite; smoke runs without coverage)
+- **Coverage ≥ 98%** on `avalon` (CI fail-under on full suite; smoke runs without coverage). **Aim for 100%** always; milestone packages should hit 100% when practical (`make test-cov-caliburn` for M6).
 - Milestone smoke + regression contracts (see [`SMOKE.md`](SMOKE.md)); `make smoke` / `make regression` / `make test-cov`
 
 ## Next implementation focus
 
-**M6 only** — Caliburn (`avalon.caliburn`): `.cal.html` compiler, layouts, `view()`, `@lang`/`@choice` wired to M4. M0–M5 are closed under the exhaust/full-parity rule. App docs: `make docs` ([`website/`](../website/)).
+**M6 Caliburn ladder is exhausted** (includes family, control stubs, framework directives, composers/creators, `@cache`, custom `directive()`, **100%** coverage on `avalon.caliburn`, progress Caliburn-first). Formal M6 close = docs polish + PR. Do **not** pull M7+ into this branch beyond stubs already allowed (`@csrf` / `@auth` / `@guest`).
 
-Do **not** pull auth, error handling, console, filesystem, or queues into M6 beyond what their decisions allow.
+**Next milestone after close:** M7 auth (sessions, real CSRF, wire `@auth` / `@guest` / `@csrf`).

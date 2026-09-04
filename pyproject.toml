@@ -54,7 +54,7 @@ testpaths = ["tests"]
 pythonpath = ["src", "."]
 # Coverage is opt-in so `pytest tests/smoke` stays a clean gate.
 # Full suite with coverage: `pytest -q --cov=avalon --cov-report=term-missing --cov-report=xml`
-# (fail_under=95 comes from [tool.coverage.report])
+# (fail_under=98 comes from [tool.coverage.report]; aim for 100% on active packages)
 markers = [
     "smoke: end-to-end smoke gates for the current milestones",
     "regression: locks public contracts against accidental breakage",
@@ -65,7 +65,7 @@ branch = true
 source = ["avalon"]
 
 [tool.coverage.report]
-fail_under = 95
+fail_under = 98
 show_missing = true
 skip_covered = false
 exclude_lines = [

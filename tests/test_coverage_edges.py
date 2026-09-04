@@ -21,7 +21,8 @@ def test_stub_packages_importable() -> None:
     assert "Model" in avalon.orm.__all__
     assert "QueryBuilder" in avalon.orm.__all__
     assert avalon.auth.__all__ == []
-    assert avalon.caliburn.__all__ == []
+    assert "Engine" in avalon.caliburn.__all__
+    assert "view" in avalon.caliburn.__all__
     assert "Controller" in avalon.http.__all__
     assert "Route" in avalon.routing.__all__
 
