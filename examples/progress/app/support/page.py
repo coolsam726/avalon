@@ -1,6 +1,7 @@
-"""Minimal HTML layout for web routes.
+"""Minimal HTML layout helper for web routes.
 
-Hand-built markup is the M2–M5 stopgap — Caliburn `view()` replaces this in M6.
+Prefer Caliburn templates via ``avalon.caliburn.view()``. This helper remains
+for one-off strings and tests.
 """
 
 from __future__ import annotations

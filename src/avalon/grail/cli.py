@@ -19,7 +19,7 @@ import uvicorn
 
 from avalon import __version__
 from avalon.grail.lang_cmd import LangError, make_lang, missing_keys, publish_lang
-from avalon.grail.make import MakeError, make
+from avalon.grail.make import MakeError, make, make_component
 from avalon.orm.inflector import table_name
 from avalon.orm.migration import MigrationError, Migrator, make_migration
 from avalon.orm.seeder import SeederError, resolve_seeder_class, run_seeder
@@ -160,6 +160,35 @@ def make_seeder_command(
 ) -> None:
     """Create a seeder in database/seeders."""
     _generate("seeder", name, force)
+
+
+@app.command("make:component")
+def make_component_command(
+    name: str = typer.Argument(..., help="Component name, e.g. alert or forms/input"),
+    force: bool = typer.Option(False, "--force", help="Overwrite an existing file"),
+    class_based: bool = typer.Option(
+        False,
+        "--class",
+        help="Also create app/view/components/… class",
+    ),
+) -> None:
+    """Create an anonymous Caliburn component in resources/views/components."""
+    try:
+        path = make_component(
+            name,
+            base_path=Path.cwd(),
+            force=force,
+            class_based=class_based,
+        )
+    except MakeError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+    typer.secho(
+        f"Component created: {path.relative_to(Path.cwd())}",
+        fg=typer.colors.GREEN,
+    )
+    if class_based:
+        typer.secho("Class created under app/view/components/", fg=typer.colors.GREEN)
 
 
 def _boot_app():

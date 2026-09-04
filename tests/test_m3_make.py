@@ -87,3 +87,32 @@ def test_invalid_names_are_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         make("controller", "/", base_path=tmp_path)
     with pytest.raises(MakeError, match="Unknown generator"):
         make("widget", "Post", base_path=tmp_path)
+
+
+def test_make_component_writes_anonymous_view(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(grail_app, ["make:component", "forms/Input"])
+    assert result.exit_code == 0, result.stdout
+    target = tmp_path / "resources" / "views" / "components" / "forms" / "input.cal.html"
+    assert target.is_file()
+    body = target.read_text(encoding="utf-8")
+    assert "@props" in body
+    assert "{{ slot }}" in body
+
+    duplicate = runner.invoke(grail_app, ["make:component", "forms/Input"])
+    assert duplicate.exit_code == 1
+    assert "already exists" in duplicate.stderr
+
+    forced = runner.invoke(grail_app, ["make:component", "forms/Input", "--force"])
+    assert forced.exit_code == 0
+
+
+def test_make_component_class_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(grail_app, ["make:component", "Alert", "--class"])
+    assert result.exit_code == 0, result.stdout
+    assert (tmp_path / "resources" / "views" / "components" / "alert.cal.html").is_file()
+    class_path = tmp_path / "app" / "view" / "components" / "alert.py"
+    assert class_path.is_file()
+    assert "class Alert(Component)" in class_path.read_text(encoding="utf-8")

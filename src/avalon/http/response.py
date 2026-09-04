@@ -58,7 +58,8 @@ def html(
 ) -> HTMLResponse:
     """Return an HTML response — the web-route counterpart to :func:`json`.
 
-    Until Caliburn (M5) provides ``view()``, web controllers build markup here.
+    Prefer ``avalon.caliburn.view()`` for templates; this helper remains for
+    hand-built markup and low-level responses.
     """
     return HTMLResponse(content, status_code=status, headers=headers)
 

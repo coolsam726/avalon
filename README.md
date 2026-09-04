@@ -15,7 +15,7 @@ Laravel-inspired Python web framework with Adonis-class DX, built on FastAPI/Sta
 
 **[`website/`](website/)** — published documentation for application developers (Astro Starlight). Run `make docs`.
 
-**[`docs/SMOKE.md`](docs/SMOKE.md)** — smoke + regression gates. Coverage **≥ 95%** on the full suite (`make test-cov`).
+**[`docs/SMOKE.md`](docs/SMOKE.md)** — smoke + regression gates. Coverage **≥ 98%** on the full suite (`make test-cov`); aim for **100%**.
 
 ## Status
 

@@ -1,0 +1,57 @@
+---
+title: Control Structures
+description: "Conditionals, loops, and @python blocks in Caliburn."
+---
+
+# Control Structures
+
+| Directive | Role |
+| --- | --- |
+| `@if` / `@elseif` / `@else` / `@endif` | Conditionals |
+| `@unless` / `@endunless` | Inverted conditional |
+| `@isset(expr)` / `@endisset` | Body when `expr` evaluates to not `None` |
+| `@empty(expr)` / `@endempty` | Body when `expr` is empty / falsy |
+| `@foreach(items as item)` / `@endforeach` | Loop with `loop` helpers |
+| `@forelse` / `@empty` / `@endforelse` | Loop or empty state |
+| `@for` / `@endfor` | Python `for` header |
+| `@while` / `@endwhile` | While loop |
+| `@auth` / `@endauth` | Body when `auth_user` or `__authenticated` is set |
+| `@guest` / `@endguest` | Inverse of `@auth` |
+| `@python` / `@endpython` | Escape hatch |
+
+## Loop variable
+
+Inside `@foreach` / `@forelse`, `loop` exposes Blade-shaped flags:
+`index`, `iteration`, `remaining`, `count`, `first`, `last`, `even`, `odd`, `depth`, `parent`.
+
+```html
+@foreach(users as user)
+  <li @if(loop.first)class="first"@endif>{{ user.name }}</li>
+@endforeach
+```
+
+Bare `@empty` inside `@forelse` remains the empty branch. Standalone
+`@empty(expr)` … `@endempty` is a separate empty-check directive.
+
+## Auth stubs
+
+Until the auth milestone wires real guards, use context keys:
+
+```html
+@auth
+  <p>Welcome back</p>
+@endauth
+
+@guest
+  <a href="/login">Sign in</a>
+@endguest
+```
+
+## Localization in views
+
+```html
+@lang("messages.welcome", {"name": name})
+{{ __("messages.welcome", {"name": name}) }}
+```
+
+`__`, `trans`, and `trans_choice` are injected into every template context.

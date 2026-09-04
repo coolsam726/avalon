@@ -90,6 +90,18 @@ export default defineConfig({
 					],
 				},
 				{
+					label: 'Caliburn',
+					items: [
+						{ label: 'Getting Started', slug: 'caliburn' },
+						{ label: 'Rendering Views', slug: 'caliburn/rendering' },
+						{ label: 'Layouts & Inheritance', slug: 'caliburn/layouts' },
+						{ label: 'Components & Slots', slug: 'caliburn/components' },
+						{ label: 'Control Structures', slug: 'caliburn/control' },
+						{ label: 'Including Subviews', slug: 'caliburn/includes' },
+						{ label: 'Stacks & Directives', slug: 'caliburn/stacks' },
+					],
+				},
+				{
 					label: 'Articulate',
 					items: [
 						{ label: 'Getting Started', slug: 'articulate' },

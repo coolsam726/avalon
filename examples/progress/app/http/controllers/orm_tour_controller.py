@@ -70,7 +70,7 @@ class OrmTourController(Controller):
                 },
                 "no_lazy_load": {
                     "endpoint": "GET /api/users/1/posts",
-                    "contract": "Unloaded user.posts raises RelationNotLoadedError",
+                    "contract": "Default: unloaded user.posts raises. Opt in with lazy_relations + await user.posts",
                 },
             }
         }

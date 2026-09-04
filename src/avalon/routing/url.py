@@ -49,7 +49,11 @@ class UrlGenerator:
         return f"{self.root}{full}" if self.root else full
 
     def asset(self, path: str, *, absolute: bool = True) -> str:
-        """Public URL for a static asset. Caliburn (M5) adds CDN/versioning."""
+        """Public URL for a file under ``public/`` (subpath-aware).
+
+        Bundlers (Vite, etc.) belong in starter kits; they emit into ``public/``
+        and apps keep calling ``asset(...)``.
+        """
         return self.to(path, absolute=absolute)
 
 

@@ -25,14 +25,18 @@ class FoundationServiceProvider(ServiceProvider):
         app.container.singleton("config", lambda c: c.resolve(ConfigRepository))
         # Localization is core infrastructure — register with the foundation.
         TranslationServiceProvider(app).register()
+        from avalon.caliburn.provider import CaliburnServiceProvider
         from avalon.orm.provider import DatabaseServiceProvider
 
         DatabaseServiceProvider(app).register()
+        CaliburnServiceProvider(app).register()
 
     def boot(self) -> None:
+        from avalon.caliburn.provider import CaliburnServiceProvider
         from avalon.orm.provider import DatabaseServiceProvider
         from avalon.translation.provider import TranslationServiceProvider
 
         set_repository(self.app.config)
         TranslationServiceProvider(self.app).boot()
         DatabaseServiceProvider(self.app).boot()
+        CaliburnServiceProvider(self.app).boot()

@@ -38,8 +38,9 @@ class MassAssignmentError(RuntimeError):
 class RelationNotLoadedError(AttributeError):
     """Raised when reading a relation that was never loaded.
 
-    Avalon never lazy-loads on attribute access: a hidden `await` inside a
-    property is how N+1 storms happen. Load it explicitly instead.
+    By default Avalon never lazy-loads on attribute access: a hidden query
+    there is how N+1 storms happen. Opt in with ``Model.lazy_relations = True``
+    to allow ``await model.rel`` (explicit await — still no silent IO).
     """
 
 
@@ -98,6 +99,9 @@ class Model(metaclass=ModelMeta):
     casts: ClassVar[dict[str, Any]] = {}
     attributes: ClassVar[dict[str, Any]] = {}
     with_: ClassVar[tuple[str, ...]] = ()
+    # When True, `await model.rel` lazy-loads that relation. Attribute use
+    # without await still raises — async cannot hide IO in `__getattr__`.
+    lazy_relations: ClassVar[bool] = False
 
     _events: ClassVar[dict[str, list[Callable[..., Any]]]] = {}
     _global_scopes: ClassVar[dict[str, Callable[[QueryBuilder], Any]]] = {}
@@ -325,10 +329,17 @@ class Model(metaclass=ModelMeta):
         # A declared relation that was never loaded must fail loudly.
         method = getattr(type(self), name, None)
         if callable(method) and getattr(method, "_is_relation", False):
-            raise RelationNotLoadedError(
-                f"Relation {name!r} is not loaded on {type(self).__name__}. "
+            hint = (
                 f"Use .with_({name!r}) when querying, await model.load({name!r}), "
                 f"or await model.{name}().get()."
+            )
+            if type(self).lazy_relations:
+                hint = (
+                    f"Await it with `await model.{name}`, eager-load with "
+                    f".with_({name!r}), or query with await model.{name}().get()."
+                )
+            raise RelationNotLoadedError(
+                f"Relation {name!r} is not loaded on {type(self).__name__}. {hint}"
             )
         raise AttributeError(f"{type(self).__name__!r} has no attribute {name!r}")
 
@@ -767,9 +778,11 @@ def _accepts_argument(func: Callable[..., Any]) -> bool:
 class PendingRelation:
     """What `user.posts` gives you when `posts` was never loaded.
 
-    Calling it (`user.posts()`) returns the relation so you can keep querying;
-    using it as data raises, because silently emitting a query per row is the
-    N+1 bug Laravel developers already know to avoid.
+    Calling it (`user.posts()`) returns the relation so you can keep querying.
+    Using it as data raises — silently querying per row is the N+1 bug.
+
+    When the model sets ``lazy_relations = True``, the pending relation is
+    awaitable: ``posts = await user.posts`` loads then returns the value.
     """
 
     __slots__ = ("_func", "_instance", "_name")
@@ -782,10 +795,35 @@ class PendingRelation:
     def __call__(self) -> Any:
         return self._func(self._instance)
 
+    def __await__(self) -> Any:
+        return self._lazy_load().__await__()
+
+    async def _lazy_load(self) -> Any:
+        instance = self._instance
+        name = self._name
+        cls = type(instance)
+        if not cls.lazy_relations:
+            raise RelationNotLoadedError(
+                f"Relation {name!r} is not loaded on {cls.__name__}. "
+                f"Set {cls.__name__}.lazy_relations = True to allow "
+                f"`await model.{name}`, or use .with_({name!r}), "
+                f"await model.load({name!r}), or await model.{name}().get()."
+            )
+        await instance.load(name)
+        return instance._relations[name]
+
     def _fail(self) -> Any:
         name = self._name
+        cls = type(self._instance)
+        if cls.lazy_relations:
+            raise RelationNotLoadedError(
+                f"Relation {name!r} is not loaded on {cls.__name__}. "
+                f"Await it first: `value = await model.{name}` "
+                f"(lazy_relations is enabled). "
+                f"Or eager-load with .with_({name!r})."
+            )
         raise RelationNotLoadedError(
-            f"Relation {name!r} is not loaded on {type(self._instance).__name__}. "
+            f"Relation {name!r} is not loaded on {cls.__name__}. "
             f"Eager load it with .with_({name!r}), call await model.load({name!r}), "
             f"or query it directly with await model.{name}().get()."
         )
@@ -806,7 +844,11 @@ class PendingRelation:
         return self._fail()
 
     def __repr__(self) -> str:
-        return f"<unloaded relation {self._name!r} on {type(self._instance).__name__}>"
+        lazy = " lazy" if type(self._instance).lazy_relations else ""
+        return (
+            f"<unloaded{lazy} relation {self._name!r} on "
+            f"{type(self._instance).__name__}>"
+        )
 
 
 class RelationDescriptor:
@@ -838,7 +880,11 @@ class RelationDescriptor:
 
 
 def relation(method: Callable[..., Any]) -> RelationDescriptor:
-    """Declare a relation: `model.rel()` queries it, `model.rel` reads it."""
+    """Declare a relation: `model.rel()` queries it, `model.rel` reads loaded data.
+
+    With ``Model.lazy_relations = True``, unloaded access is awaitable:
+    ``await model.rel`` loads then returns the related value.
+    """
     return RelationDescriptor(method)
 
 

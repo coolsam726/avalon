@@ -27,10 +27,17 @@ try:
     len(user.posts)
 except RelationNotLoadedError:
     pass
+
+# Opt-in awaitable lazy load (explicit await — still no silent IO)
+class LazyUser(User):
+    lazy_relations = True
+
+user = await LazyUser.find(1)
+posts = await user.posts
 ```
 
 :::caution
-Avalon does **not** lazy-load relationships on attribute access. A hidden query there is how N+1 problems start. Eager-load with `with_`, or query explicitly with `await user.posts().get()`.
+By default Avalon does **not** lazy-load on attribute access. A hidden query there is how N+1 problems start. Eager-load with `with_`, query with `await user.posts().get()`, or set `lazy_relations = True` and use `await user.posts`.
 :::
 
 

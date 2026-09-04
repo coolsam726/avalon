@@ -1,7 +1,7 @@
 # Smoke & Regression
 
 > Binding architecture: [`PLAN.md`](PLAN.md).  
-> Coverage gate: **≥ 95%** on the **full** suite (CI `test` job).  
+> Coverage gate: **≥ 98%** on the **full** suite (CI `test` job); always aim for **100%**.  
 > Complete the milestone smoke gate before advancing.
 
 ## Commands
@@ -11,7 +11,7 @@
 | `make smoke` / `pytest -q tests/smoke` | Smoke gate only — **no coverage** (clean exit) |
 | `make regression` / `pytest -q -m regression` | Smoke + locked public contracts |
 | `make test` / `pytest -q` | Full unit + smoke (no coverage) |
-| `make test-cov` | Full suite with **coverage fail-under 95%** |
+| `make test-cov` | Full suite with **coverage fail-under 98%** (aim 100%) |
 
 ```bash
 pip install -e ".[dev]"
@@ -27,7 +27,7 @@ make test-cov
 3. **CI jobs (all required conceptually):**
    - `Smoke (regression gate)` — `pytest tests/smoke`
    - `Regression contracts` — `pytest -m regression`
-   - `Unit + coverage ≥95%` — full suite with `pytest-cov`
+   - `Unit + coverage ≥98%` — full suite with `pytest-cov` (aim 100%)
 4. **Do not remove or weaken** a regression test to green CI — fix the product or consciously revise [`PLAN.md`](PLAN.md) + this doc
 
 Markers are declared in `pyproject.toml` under `[tool.pytest.ini_options]`.
