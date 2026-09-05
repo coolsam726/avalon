@@ -53,6 +53,10 @@ config = {
             "table": "cache",
             "lock_table": "cache_locks",
         },
+        "redis": {
+            "driver": "redis",
+            "connection": "default",
+        },
         "null": {"driver": "null"},
     },
 }
@@ -65,10 +69,15 @@ config = {
 | **array** | Process-local only — ideal for tests and demos (progress defaults here) |
 | **file** | Single-server apps; data under `storage/framework/cache/data` |
 | **database** | Shared cache across app processes via Articulate (`cache` + `cache_locks` tables) |
+| **redis** | Shared cache via Redis (`avalon[redis]`) — tags and locks supported |
 | **null** | Disable caching without removing call sites (writes accepted, reads miss) |
 
-A Redis driver arrives with milestone **M16**. Until then, prefer `file` or
-`database` in multi-process deployments.
+```python
+Cache.store("redis").put("logo", svg, 3600)
+Cache.store("redis").tags("assets").put("logo", svg, 3600)
+```
+
+See [Redis](/redis/) for connection configuration.
 
 Switch stores per call:
 
@@ -189,15 +198,16 @@ Cache.without_overlapping("report", lambda: build_report())
 | array | Atomic `add` under a process lock |
 | file | `.locks/` + `fcntl.flock` |
 | database | `cache_locks` table |
+| redis | `SET NX EX` owner token |
 
 Scheduled `without_overlapping()` prefers cache locks when Cache is booted,
 falling back to a filesystem mutex — see [Task Scheduling](/scheduling/).
 
 ## Cache tags
 
-Tags let you invalidate related keys as a group. They work on the **array**
-store today (Redis tags arrive with M16). File and database stores raise
-`RuntimeError` if you call `tags()` — Avalon is honest about driver support.
+Tags let you invalidate related keys as a group. They work on the **array** and
+**redis** stores. File and database stores raise `RuntimeError` if you call
+`tags()` — Avalon is honest about driver support.
 
 ```python
 Cache.tags("users", "authors").put("ada", user, 60)
@@ -220,6 +230,7 @@ Cache.extend("mongo", lambda app, cfg, name: Repository(MongoStore(...)))
 
 ## Related
 
+- [Redis](/redis/) — connection manager and drivers
 - [Task Scheduling](/scheduling/) — overlap locks
-- [Queues](/queues/) — unique jobs (Redis locks in M16)
+- [Queues](/queues/) — unique jobs / Redis queue
 - [File Storage](/filesystem/) — file cache path under `storage/framework/cache`

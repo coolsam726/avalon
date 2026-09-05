@@ -44,6 +44,9 @@ class FoundationServiceProvider(ServiceProvider):
         from avalon.queue.provider import QueueServiceProvider
 
         FilesystemServiceProvider(app).register()
+        from avalon.redis.provider import RedisServiceProvider
+
+        RedisServiceProvider(app).register()
         QueueServiceProvider(app).register()
         from avalon.mail.provider import MailServiceProvider
 
@@ -66,6 +69,7 @@ class FoundationServiceProvider(ServiceProvider):
         from avalon.mail.provider import MailServiceProvider
         from avalon.notifications.provider import NotificationServiceProvider
         from avalon.queue.provider import QueueServiceProvider
+        from avalon.redis.provider import RedisServiceProvider
         from avalon.orm.provider import DatabaseServiceProvider
         from avalon.translation.provider import TranslationServiceProvider
 
@@ -78,6 +82,7 @@ class FoundationServiceProvider(ServiceProvider):
         ExceptionsServiceProvider(self.app).boot()
         ConsoleServiceProvider(self.app).boot()
         FilesystemServiceProvider(self.app).boot()
+        RedisServiceProvider(self.app).boot()
         QueueServiceProvider(self.app).boot()
         MailServiceProvider(self.app).boot()
         NotificationServiceProvider(self.app).boot()

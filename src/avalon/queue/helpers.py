@@ -63,6 +63,11 @@ def default_queue_config(database_connection: str = "default") -> dict[str, Any]
                 "queue": "default",
                 "retry_after": 90,
             },
+            "redis": {
+                "driver": "redis",
+                "connection": "default",
+                "queue": "queues",
+            },
         },
         "failed": {
             "driver": "database",

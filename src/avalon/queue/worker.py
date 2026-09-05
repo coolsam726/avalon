@@ -6,7 +6,6 @@ import asyncio
 import json
 from typing import TYPE_CHECKING, Any
 
-from avalon.queue.connections.database import DatabaseQueue
 from avalon.queue.failed import FailedJobRepository, report_failure
 from avalon.queue.job import Job, call_handle, run_through_middleware
 
@@ -45,39 +44,46 @@ class Worker:
 
     async def run_once(self, connection_name: str, *, queue: str = "default") -> bool:
         connection = self.manager.connection(connection_name)
-        if isinstance(connection, DatabaseQueue):
-            record = await connection.pop(queue)
-            if record is None:
-                return False
-            job = Job.deserialize(json.loads(record["payload"]))
-            try:
-                await self.process_job(
-                    job,
-                    connection_name=connection_name,
-                    database_record=record,
-                    database_connection=connection,
-                )
-            except Exception as exc:
-                await self._handle_failure(
-                    job,
-                    exc,
-                    connection_name=connection_name,
-                    queue=queue,
-                    record=record,
-                    database_connection=connection,
-                )
-            return True
-
-        return False
+        pop = getattr(connection, "pop", None)
+        if not callable(pop):
+            return False
+        record = await pop(queue)
+        if record is None:
+            return False
+        job = Job.deserialize(json.loads(record["payload"]))
+        try:
+            await self.process_job(
+                job,
+                connection_name=connection_name,
+                record=record,
+                connection=connection,
+            )
+        except Exception as exc:
+            await self._handle_failure(
+                job,
+                exc,
+                connection_name=connection_name,
+                queue=queue,
+                record=record,
+                connection=connection,
+            )
+        return True
 
     async def process_job(
         self,
         job: Job,
         *,
         connection_name: str,
+        record: dict[str, Any] | None = None,
+        connection: Any | None = None,
+        # Back-compat kwargs used by SyncQueue / older callers
         database_record: dict[str, Any] | None = None,
-        database_connection: DatabaseQueue | None = None,
+        database_connection: Any | None = None,
     ) -> Any:
+        del connection_name
+        record = record or database_record
+        connection = connection or database_connection
+
         async def execute(current: Job) -> Any:
             return await call_handle(current)
 
@@ -100,8 +106,8 @@ class Worker:
         except Exception:
             raise
         else:
-            if database_connection is not None and database_record is not None:
-                await database_connection.delete(int(database_record["id"]))
+            if connection is not None and record is not None and hasattr(connection, "delete"):
+                await connection.delete(record["id"])
             return result
 
     async def _handle_failure(
@@ -112,7 +118,7 @@ class Worker:
         connection_name: str,
         queue: str,
         record: dict[str, Any],
-        database_connection: DatabaseQueue,
+        connection: Any,
     ) -> None:
         attempts = int(record.get("attempts") or 0) + 1
         max_tries = int(getattr(job, "tries", None) or job.__class__.tries or 1)
@@ -120,8 +126,13 @@ class Worker:
 
         if attempts >= max_tries:
             repo = FailedJobRepository(self.manager.failed_config())
+            failed_uuid = (
+                connection.new_failed_uuid()
+                if hasattr(connection, "new_failed_uuid")
+                else str(record.get("id"))
+            )
             await repo.store(
-                uuid=database_connection.new_failed_uuid(),
+                uuid=failed_uuid,
                 connection=connection_name,
                 queue=queue,
                 payload=json.loads(record["payload"]),
@@ -131,11 +142,11 @@ class Worker:
                 await job.failed(exc)
             except Exception:
                 pass
-            await database_connection.delete(int(record["id"]))
+            await connection.delete(record["id"])
             return
 
         delay = _backoff_delay(job, attempts)
-        await database_connection.release(int(record["id"]), delay=delay)
+        await connection.release(record["id"], delay=delay)
 
 
 def _backoff_delay(job: Job, attempts: int) -> int:
