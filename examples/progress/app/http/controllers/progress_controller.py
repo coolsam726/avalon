@@ -117,7 +117,7 @@ def _milestones() -> list[dict]:
                 "schedule:run / schedule:work",
                 "grail fiddle REPL",
                 "Avalon Prompts + dump()/dd()",
-                "progress:demo (M11–M13)",
+                "progress:hello · progress:prompts",
             ],
         },
         {
@@ -130,7 +130,7 @@ def _milestones() -> list[dict]:
             "id": "M11",
             "name": "Queues + workers",
             "status": "complete",
-            "proof": ["Job dispatch", "queue:work", "failed jobs"],
+            "proof": ["Job dispatch", "queue:work", "failed jobs", "progress:demo"],
         },
         {
             "id": "M12",
@@ -147,8 +147,29 @@ def _milestones() -> list[dict]:
         {
             "id": "M14",
             "name": "Helpers + Strings",
+            "status": "complete",
+            "proof": [
+                "Arr / Number / data_* helpers",
+                "Str / Stringable / str_()",
+                "progress:helpers",
+            ],
+        },
+        {
+            "id": "M15",
+            "name": "Cache",
+            "status": "complete",
+            "proof": [
+                "Cache / cache() façade",
+                "array + file + database stores",
+                "atomic locks · array tags",
+                "progress:cache",
+            ],
+        },
+        {
+            "id": "M16",
+            "name": "Redis",
             "status": "next",
-            "proof": ["Helpers catalog", "Str / Stringable"],
+            "proof": ["Redis connections", "session / cache / queue drivers"],
         },
     ]
 
