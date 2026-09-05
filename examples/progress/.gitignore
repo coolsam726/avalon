@@ -20,3 +20,4 @@ storage/logs/*.log
 node_modules/
 public/build/
 !public/build/.gitkeep
+public/storage
