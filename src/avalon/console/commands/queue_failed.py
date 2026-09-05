@@ -46,7 +46,11 @@ class QueueRetryCommand(Command):
 
     def handle(self) -> int:
         manager = self.app.make(QueueManager)
-        connection = manager.connection("database")
+        try:
+            connection = manager.connection("database")
+        except KeyError:
+            self.error("Retry requires a database queue connection.")
+            return 1
         if not isinstance(connection, DatabaseQueue):
             self.error("Retry requires a database queue connection.")
             return 1

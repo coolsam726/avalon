@@ -78,6 +78,10 @@ def test_m9_schedule_run_heartbeat(progress_cwd: Path) -> None:
 def test_m9_fiddle_namespace_boots(progress_cwd: Path) -> None:
     from avalon.console.kernel import ConsoleKernel
 
+    # Fresh CI checkouts have no SQLite schema — migrate before ORM queries.
+    migrated = runner.invoke(grail_app, ["migrate"])
+    assert migrated.exit_code == 0, migrated.stdout + migrated.stderr
+
     kernel = ConsoleKernel.from_cwd(progress_cwd)
     ns = build_namespace(kernel.app)
     assert ns["app"] is kernel.app
