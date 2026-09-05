@@ -319,7 +319,7 @@ Laravel’s Digging Deeper / Security / Packages clusters map onto Avalon as fol
 | Localization | `localization` | **M4** (code **Done**) | **Docs gap** — write Starlight Localization page (code already exhausted) |
 | Helpers | `helpers` | **M14** | Shipped |
 | Strings | `strings` | **M14** | Shipped |
-| Cache | `cache` | **M15** | Write when cache ships |
+| Cache | `cache` | **M15** | Shipped |
 | Redis | `redis` | **M16** | Write when Redis drivers ship |
 | Encryption | `encryption` | **M17** | Write when Crypt façade ships (cookie encrypt already in M7) |
 | Events | `events` | **M18** | Write when app event dispatcher ships (model events already in Articulate) |
@@ -971,15 +971,19 @@ Laravel [Helpers](https://laravel.com/docs/helpers) + [Strings](https://laravel.
 
 Laravel [Cache](https://laravel.com/docs/cache) store — first consumer of schedule mutex upgrades and queue unique locks.
 
-- `Cache` façade: `get` / `put` / `forever` / `forget` / `flush` / `remember` / `remember_forever` / `add` / `pull` / locks (`lock` / `block`)
+- `Cache` façade: `get` / `put` / `forever` / `forget` / `flush` / `remember` / `remember_forever` / `add` / `pull` / `touch` / `many` / `put_many` / locks (`lock` / `block` / `restore_lock` / `flush_locks` / `without_overlapping`)
 - Drivers: **array** (tests), **file**, **database** (M5); Redis driver lands with **M16**
-- `config/cache.py`; `cache()` helper; tagged cache subset if claimed
+- Atomic `add` on all stores; database locks via `cache_locks` table; file locks via `flock`
+- Tags on **array** only (file/database raise — Laravel-honest); Redis tags in M16
+- `config/cache.py`; `cache()` helper; `Cache.extend` for custom drivers
 - Upgrade M9 schedule mutex to prefer cache locks when configured
 - Docs: Starlight **Cache**
 
 **Depends on:** M5 for database driver; M9 for scheduler consumer. Soft-depends on M10 for file paths under `storage/framework/cache`.
 
 **Gate:** façade + array/file/database green; docs published; coverage ≥ 98%.
+
+**Status (M15):** Ladder exhausted — `Cache` / `cache()`; array + file + database + null stores; atomic `add` / locks (`cache_locks`, file flock); tags on array only; `touch` / `restore_lock` / `flush_locks` / `extend`; schedule `without_overlapping` prefers cache locks; scaffold `config/cache.py`; progress `progress:cache`; Starlight Cache; tests + smoke.
 
 ### M16 — Redis (`avalon.redis` + drivers)
 
@@ -1189,6 +1193,6 @@ Laravel [Package Development](https://laravel.com/docs/packages) guidelines for 
 
 ## Next implementation focus
 
-**M14 helpers + strings gate met** — Arr / Number / misc helpers + `Str`/`Stringable` exhausted (see M14 status). **Next: M15** Cache when ready. Roadmap continues **M15–M29** (cache/Redis → encryption → events → authorization → HTTP client/processes/concurrency → API resources → factories → **Articulate NoSQL** → broadcasting → search → testing → packages).
+**M15 cache gate met** — Cache stores + locks exhausted (see M15 status). **Next: M16** Redis when ready. Roadmap continues **M16–M29** (Redis → encryption → events → authorization → HTTP client/processes/concurrency → API resources → factories → **Articulate NoSQL** → broadcasting → search → testing → packages).
 
 **Docs (anytime):** Localization page (M4 code done); Mutators & Casts Articulate how-to (M5 code done). Error Handling / Logging / Artisan Console / Task Scheduling how-tos published.

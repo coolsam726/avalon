@@ -123,6 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
 						{ label: 'Collections', slug: 'collections' },
 						{ label: 'Helpers', slug: 'helpers' },
 						{ label: 'Strings', slug: 'strings' },
+						{ label: 'Cache', slug: 'cache' },
 					],
 				},
 				{

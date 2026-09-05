@@ -417,8 +417,22 @@ pytest -q tests/test_m14_*.py tests/smoke/test_m14_smoke.py
 
 ---
 
+## M15 — Cache
+
+```bash
+pytest -q tests/test_m15_*.py tests/smoke/test_m15_smoke.py
+```
+
+### M15 exit criteria
+
+- [x] `Cache` façade + array / file / database stores
+- [x] Atomic `add` + store-native locks; tags array-only (Laravel-honest)
+- [x] Docs + smoke; no M16 until green
+
+---
+
 ## Out of scope until later milestones
 
-- Digging Deeper: cache, Redis, encryption, events, authorization, HTTP client, processes, concurrency, API resources, factories, **Articulate NoSQL (M25)**, broadcasting, search, testing toolkit, package guidelines (M15–M29)
+- Digging Deeper: Redis, encryption, events, authorization, HTTP client, processes, concurrency, API resources, factories, **Articulate NoSQL (M25)**, broadcasting, search, testing toolkit, package guidelines (M16–M29)
 - Localization + Mutators/Casts **docs** (code already shipped M4/M5)
 - Additional NoSQL engines beyond Mongo, and other Later extras — see [`PLAN.md`](PLAN.md)

@@ -64,6 +64,7 @@ def scaffold_app(name: str, destination: Path | None = None) -> Path:
         "config/queue.py": _config_queue(),
         "config/mail.py": _config_mail(),
         "config/notifications.py": _config_notifications(),
+        "config/cache.py": _config_cache(),
         "app/models/__init__.py": "",
         "app/console/__init__.py": "",
         "app/console/commands/__init__.py": "",
@@ -90,6 +91,7 @@ def scaffold_app(name: str, destination: Path | None = None) -> Path:
         "storage/app/.gitkeep": "",
         "storage/app/public/.gitkeep": "",
         "storage/framework/.gitkeep": "",
+        "storage/framework/cache/data/.gitkeep": "",
         "storage/logs/.gitkeep": "",
         "public/.gitkeep": "",
     }
@@ -549,6 +551,32 @@ config = {
         "database": {"driver": "database"},
         "log": {"driver": "log"},
         "array": {"driver": "array"},
+    },
+}
+'''
+
+
+def _config_cache() -> str:
+    return '''"""Cache stores."""
+
+from avalon.config import env
+
+config = {
+    "default": env("CACHE_STORE", "file"),
+    "prefix": env("CACHE_PREFIX", "avalon_cache_"),
+    "stores": {
+        "array": {"driver": "array"},
+        "file": {
+            "driver": "file",
+            "path": "storage/framework/cache/data",
+        },
+        "database": {
+            "driver": "database",
+            "connection": None,
+            "table": "cache",
+            "lock_table": "cache_locks",
+        },
+        "null": {"driver": "null"},
     },
 }
 '''

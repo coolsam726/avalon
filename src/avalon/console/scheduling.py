@@ -128,12 +128,22 @@ def _field_matches(field: str, value: int, minimum: int, maximum: int) -> bool:
 
 
 def run_event(event: Event, *, base_path, runner: Callable[[str], int] | None = None) -> int:
-    """Execute one due event, honoring withoutOverlapping."""
+    """Execute one due event, honoring withoutOverlapping.
+
+    Prefers ``Cache.lock`` when the cache manager is booted; falls back to the
+    filesystem mutex under ``storage/framework/schedule``.
+    """
+    lock: Any = None
     mutex: Mutex | None = None
     if event.without_overlapping:
-        mutex = Mutex(base_path, event.mutex_name())
-        if not mutex.acquire():
-            return 0
+        lock = _try_cache_lock(event.mutex_name())
+        if lock is not None:
+            if lock.get() is False:
+                return 0
+        else:
+            mutex = Mutex(base_path, event.mutex_name())
+            if not mutex.acquire():
+                return 0
     try:
         if event.callback is not None:
             event.callback()
@@ -142,5 +152,17 @@ def run_event(event: Event, *, base_path, runner: Callable[[str], int] | None = 
             return int(runner(event.command))
         return 0
     finally:
+        if lock is not None:
+            lock.release()
         if mutex is not None:
             mutex.release()
+
+
+def _try_cache_lock(name: str) -> Any | None:
+    try:
+        from avalon.cache.manager import Cache
+
+        Cache.manager()
+        return Cache.lock(f"schedule:{name}", seconds=3600)
+    except Exception:
+        return None
