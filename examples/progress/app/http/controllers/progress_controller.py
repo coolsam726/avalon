@@ -171,6 +171,84 @@ def _milestones() -> list[dict]:
             "status": "next",
             "proof": ["Redis connections", "session / cache / queue drivers"],
         },
+        {
+            "id": "M17",
+            "name": "Encryption",
+            "status": "planned",
+            "proof": ["Crypt façade", "APP_KEY serialize-aware encrypt"],
+        },
+        {
+            "id": "M18",
+            "name": "Events",
+            "status": "planned",
+            "proof": ["dispatch / listen / subscribe", "queued listeners"],
+        },
+        {
+            "id": "M19",
+            "name": "Authorization",
+            "status": "planned",
+            "proof": ["Gates / Policies", "@can / @cannot", "make:policy"],
+        },
+        {
+            "id": "M20",
+            "name": "HTTP Client",
+            "status": "planned",
+            "proof": ["Http.get/post façade", "fakes / retry / pool"],
+        },
+        {
+            "id": "M21",
+            "name": "Processes",
+            "status": "planned",
+            "proof": ["Process::run / pool", "subprocess fakes"],
+        },
+        {
+            "id": "M22",
+            "name": "Concurrency",
+            "status": "planned",
+            "proof": ["Concurrency::run", "async / process drivers"],
+        },
+        {
+            "id": "M23",
+            "name": "API Resources",
+            "status": "planned",
+            "proof": ["JsonResource / ResourceCollection", "make:resource"],
+        },
+        {
+            "id": "M24",
+            "name": "Model factories",
+            "status": "planned",
+            "proof": ["Factory base", "states / sequences", "make:factory"],
+        },
+        {
+            "id": "M25",
+            "name": "Articulate NoSQL",
+            "status": "planned",
+            "proof": ["Mongo document models", "multi-store Articulate"],
+        },
+        {
+            "id": "M26",
+            "name": "Broadcasting",
+            "status": "planned",
+            "proof": ["ShouldBroadcast", "channel auth", "Redis / websocket"],
+        },
+        {
+            "id": "M27",
+            "name": "Search",
+            "status": "planned",
+            "proof": ["Searchable models", "Scout-class drivers"],
+        },
+        {
+            "id": "M28",
+            "name": "Testing toolkit",
+            "status": "planned",
+            "proof": ["HTTP / console assertions", "façade fakes"],
+        },
+        {
+            "id": "M29",
+            "name": "Package development",
+            "status": "planned",
+            "proof": ["provider discovery", "publish tags", "package guidelines"],
+        },
     ]
 
 
