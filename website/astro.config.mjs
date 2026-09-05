@@ -110,19 +110,29 @@ document.addEventListener('DOMContentLoaded', () => {
 					],
 				},
 				{
+					label: 'Digging Deeper',
+					collapsed: true,
+					items: [
+						{ label: 'Artisan Console', slug: 'console' },
+						{ label: 'Prompts', slug: 'prompts' },
+						{ label: 'Task Scheduling', slug: 'scheduling' },
+						{ label: 'File Storage', slug: 'filesystem' },
+						{ label: 'Queues', slug: 'queues' },
+						{ label: 'Mail', slug: 'mail' },
+						{ label: 'Notifications', slug: 'notifications' },
+						{ label: 'Collections', slug: 'collections' },
+						{ label: 'Helpers', slug: 'helpers' },
+						{ label: 'Strings', slug: 'strings' },
+						{ label: 'Cache', slug: 'cache' },
+					],
+				},
+				{
 					label: 'Security',
 					collapsed: true,
 					items: [
 						{ label: 'Authentication', slug: 'authentication' },
 						{ label: 'Hashing', slug: 'hashing' },
 						{ label: 'Passwords', slug: 'passwords' },
-					],
-				},
-				{
-					label: 'Digging Deeper',
-					collapsed: true,
-					items: [
-						{ label: 'Collections', slug: 'collections' },
 					],
 				},
 				{

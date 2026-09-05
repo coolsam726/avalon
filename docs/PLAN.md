@@ -2,7 +2,7 @@
 
 > **Status:** Binding. This document is the source of truth for architecture and milestones.
 > Change it deliberately (PR / explicit decision), not casually mid-implementation.
-> Last aligned: 2026-09-04 (M5 complete; docs versions / factories / REPL clarified).
+> Last aligned: 2026-09-05 (M9 complete; post-M13 Digging Deeper + Articulate NoSQL queued).
 
 ## Working identity
 
@@ -81,7 +81,7 @@ avalon/
     framework/                 # Application, container, boot lifecycle
     config/                    # config repository, env
     providers/                 # core service providers + Provider base
-    http/                      # kernel, request, response, middleware, controllers
+    http/                      # kernel, request, response, middleware, controllers (+ M23 API Resources)
     routing/                   # Route DSL → FastAPI bridge
     validation/                # FormRequest
     translation/               # M4 — translator, plurals, Number, lang tooling
@@ -93,10 +93,22 @@ avalon/
     queue/                     # M11 — jobs, workers, failed jobs
     mail/                      # M12 — Mailable, Mailer, transports
     notifications/             # M13 — Notifiable, channels (mail, database, …)
+    support/                   # Collections (shipped); Helpers + Str (M14)
+    cache/                     # M15 — Cache store + drivers
+    redis/                     # M16 — Redis connection + session/cache/queue drivers
+    encryption/                # M17 — Crypt façade
+    events/                    # M18 — app event dispatcher (model events stay in orm)
+    auth/                      # M7 (+ M19 Gates/Policies)
+    client/                    # M20 — outbound HTTP client (or avalon.http.client)
+    process/                   # M21 — Laravel Processes parity
+    concurrency/               # M22 — concurrent closures / pools
+    scout/                     # M27 — search (optional extra)
+    broadcasting/              # M26 — Echo-class fan-out
+    testing/                   # M28 — TestCase helpers beyond pytest baseline
     installer/                 # avalon new …
-    orm/                       # M5
+    orm/                       # M5 (+ M24 factories, M25 NoSQL/document stores)
     caliburn/                  # M6 — optional for API apps
-    auth/                      # M7
+    session/                   # M7 — session, CSRF, cookie encrypt
   tests/
   examples/
   docs/
@@ -112,13 +124,21 @@ avalon/
 - `from avalon.translation import __, trans, trans_choice, Number, Lang`
 - `from avalon.orm import Model`
 - later: `from avalon.caliburn import ViewFactory`
-- later: `from avalon.console import Command, schedule`
 - later: `from avalon.filesystem import Storage`
 - later: `from avalon.queue import Job, dispatch`
 - later: `from avalon.mail import Mail, Mailable`
 - later: `from avalon.notifications import notify, Notifiable`
+- later: `from avalon.support import collect, Str`  # Helpers/Str expand in M14
+- later: `from avalon.cache import Cache`
+- later: `from avalon.encryption import Crypt`
+- later: `from avalon.events import Event, dispatch as event`
+- later: `from avalon.auth import Gate, Policy`  # M19
+- later: `from avalon.http.client import Http`  # M20 naming TBD
+- later: `from avalon.process import Process`
+- later: `from avalon.concurrency import Concurrency`
 - `from avalon.exceptions import Handler`
 - `from avalon.log import log`
+- `from avalon.console import Command, schedule`
 
 ### Subpackage boundaries
 
@@ -139,10 +159,15 @@ avalon/
 | `avalon.queue` | Jobs, queues, workers, failed-job handling (M11) |
 | `avalon.mail` | Mailable, Mailer, transports, Markdown mail (M12) |
 | `avalon.notifications` | Notifiable, notification channels, database notifications (M13) |
+| `avalon.support` | Support `Collection` (shipped); Laravel Helpers + `Str` (M14) |
+| `avalon.cache` | Cache store + drivers (M15) |
+| `avalon.redis` | Redis connection manager + drivers for cache/session/queue (M16) |
+| `avalon.encryption` | `Crypt` façade — encrypt/decrypt/serialize (M17); cookie encrypt already under `avalon.session` (M7) |
+| `avalon.events` | Application event dispatcher / listeners / subscribers (M18) |
 | `avalon.installer` | Installer CLI (`avalon new`) |
-| `avalon.orm` | Eloquent-like ORM (M5) |
+| `avalon.orm` | Eloquent-like ORM (M5); model factories (M24); NoSQL / document-store drivers (M25) |
 | `avalon.caliburn` | Caliburn compiler/runtime (M6) |
-| `avalon.auth` | Guards, middleware (M7) |
+| `avalon.auth` | Guards, middleware (M7); Gates / Policies (M19) |
 
 ## Ecosystem growth
 
@@ -180,6 +205,27 @@ Sync Eloquent-style calls are **not** offered — a hidden sync bridge under asy
 
 **Internal rule:** App code depends on `avalon.orm`, not SQLAlchemy — except documented escape hatches (`DB.raw`, `DB.connection().execute`).
 
+### Decision: Articulate multi-store (SQL + NoSQL) — binding for M25
+
+M5 exhausted **SQL** Eloquent parity on SQLAlchemy Core. **NoSQL is not a second ORM and not a forever-Later extra** — it is a scheduled Articulate core track (**M25**) so document stores share the same Active Record mental model where semantics match, without pretending every SQL feature exists on Mongo.
+
+**Why bake into Articulate (not a satellite package):** a bolt-on `avalon.mongo` that reimplements models/collections/events will fork the DX and force apps to learn two ORMs. Queuing NoSQL as Articulate work forces the connection/model boundary to stay honest while SQL remains the default happy path.
+
+**Contract (binding when M25 lands; design constraint from now):**
+
+| Concern | Rule |
+| --- | --- |
+| Package home | `avalon.orm` — same `Model` / `DB` / `Collection` import root; store-specific code behind connection drivers |
+| Default | SQL connections stay the scaffold default; NoSQL is opt-in via `config/database.py` + extras (`avalon[mongo]`, …) |
+| Connection | Every connection declares a **store kind** (`sql` \| `document` / driver name). Models bind to a connection (explicit or default) |
+| Shared DX | Casts, accessors/mutators, dirty tracking, soft deletes (where meaningful), model events/observers, Support/Eloquent collections, pagination shapes — reuse when semantics are honest |
+| Divergent DX | Schema builder / SQL migrations do **not** fake-map onto document collections; relationships are reference/embed (or driver-documented equivalents), not SQL join theater; query builder exposes only what the driver can honor |
+| Escape hatches | Driver-native APIs behind documented façades (e.g. Mongo collection access) — never leak motor/pymongo types into happy-path app signatures |
+| Exhaust rule | M25 exhausts **MongoDB** as the first document driver end-to-end (config → model → query → tests → docs). Other NoSQL (Cosmos API, Dynamo-shaped, …) may follow as additional drivers under the same store abstraction — do not claim them in M25 unless exhausted |
+| Non-goals | Replacing SQL Articulate; dual-write magic; automatic SQL↔document sync; pretending `belongs_to_many` pivots exist on documents |
+
+**Until M25:** do not add ad-hoc Mongo helpers outside this contract. SQL M5 APIs may keep evolving, but new Articulate internals should prefer connection/driver seams that M25 can plug into rather than hard-wiring SQLAlchemy types into every public path.
+
 ### Parity ladder (all in M5)
 
 1. **Connections:** `config/database.py`, multiple connections, SQLite / PostgreSQL / MySQL+MariaDB / SQL Server (Laravel first-party set) plus optional Oracle, `DB` façade, raw queries, transactions (+ nested via savepoints)
@@ -191,7 +237,7 @@ Sync Eloquent-style calls are **not** offered — a hidden sync bridge under asy
 7. **Scopes & lifecycle:** local scopes, global scopes, soft deletes (`trashed` / `with_trashed` / `only_trashed` / `restore` / `force_delete`), model events + observers
 8. **Pagination:** `paginate` / `simple_paginate` with a JSON-serializable paginator
 9. **Migrations:** Schema builder (`Schema.create` + `Blueprint`) over SQLAlchemy DDL; ordered Python migration files + a `migrations` table (not Alembic revisions); `make:model` (+`-m`), `make:migration` with Laravel TableGuesser name inference (create/update/blank stubs + StudlyCase class from slug), `migrate`, `migrate:rollback`, `migrate:fresh`, `migrate:status`. **Column modifiers (shipped):** chain on the creation line — `nullable()`, `default(...)`, `unique()`, **`index()`**, `primary()`, `after` / `before` (MySQL/MariaDB), `constrained()` — matching Laravel `$table->string('email')->index()`. Table-level `index([...])` / `unique([...])` also ship.
-10. **Seeders:** `Seeder` with `call` / `call_with` / `call_silent` / `call_once` / `resolve` / invoke; `WithoutModelEvents`; `make:seeder`; `db:seed` / `migrate --seed` / `migrate:fresh --seed` (`--class` / `--seeder`); scaffold `DatabaseSeeder`. **Model factories are deferred** (see Later) — seeders must stay usable without them; factories later feed `DatabaseSeeder` the Laravel way (`User::factory()->count(10)->create()`).
+10. **Seeders:** `Seeder` with `call` / `call_with` / `call_silent` / `call_once` / `resolve` / invoke; `WithoutModelEvents`; `make:seeder`; `db:seed` / `migrate --seed` / `migrate:fresh --seed` (`--class` / `--seeder`); scaffold `DatabaseSeeder`. **Model factories are deferred to M24** — seeders must stay usable without them; factories later feed `DatabaseSeeder` the Laravel way (`User::factory()->count(10)->create()`).
 
 **Rules:**
 
@@ -201,7 +247,7 @@ Sync Eloquent-style calls are **not** offered — a hidden sync bridge under asy
 - Model events must fire for the documented lifecycle, including soft-delete restore.
 - Migrations must round-trip: `migrate` → `migrate:rollback` returns the schema to its prior state.
 
-**Deferred (declared, not M5):** database sessions/queue drivers (M11), model caching, read/write connection splitting, and **model factories** (see Later — explicit follow-on so seeders can grow into factory-backed demos).
+**Deferred (declared, not M5):** database sessions/queue drivers (M11), model caching, read/write connection splitting, **model factories** (**M24**), and **NoSQL / document stores** (**M25** — Articulate multi-store; see decision above).
 
 ## Decision: Documentation site (`website/`)
 
@@ -263,17 +309,38 @@ Caliburn remains its own top-level group (Blade equivalent). Do **not** put the 
 
 **Gate before starting M7 implementation:** Basics pages for shipped surfaces are published and linked in `website/astro.config.mjs` (**met**). Expand CSRF / Session / Logging placeholders when those milestones land — not fake APIs.
 
-### Digging Deeper — Mail & Notifications (binding when M12/M13 land)
+### Digging Deeper — scheduled surfaces (binding when milestones land)
 
-Laravel places **Mail** and **Notifications** under Digging Deeper (not Basics). Avalon mirrors that:
+Laravel’s Digging Deeper / Security / Packages clusters map onto Avalon as follows. Starlight sidebars grow when each surface ships — do not stub fake APIs ahead of the milestones.
 
 | Laravel | Avalon docs slug (target) | Milestone | Docs action |
 | --- | --- | --- | --- |
 | Collections | `collections` | Support Collections | **Done** |
+| Localization | `localization` | **M4** (code **Done**) | **Docs gap** — write Starlight Localization page (code already exhausted) |
+| Helpers | `helpers` | **M14** | Shipped |
+| Strings | `strings` | **M14** | Shipped |
+| Cache | `cache` | **M15** | Shipped |
+| Redis | `redis` | **M16** | Write when Redis drivers ship |
+| Encryption | `encryption` | **M17** | Write when Crypt façade ships (cookie encrypt already in M7) |
+| Events | `events` | **M18** | Write when app event dispatcher ships (model events already in Articulate) |
+| Broadcasting | `broadcasting` | **M26** | Write when broadcasting ships |
+| Authorization | `authorization` | **M19** | Write when Gates/Policies ship |
+| HTTP Client | `http-client` | **M20** | Write when HTTP client ships |
+| Processes | `processes` | **M21** | Write when Processes ship |
+| Concurrency | `concurrency` | **M22** | Write when Concurrency ships |
+| Eloquent: Mutators & Casting | Articulate page / section | **M5** (code **Done**) | **Docs deepen** — dedicated Mutators & Casts how-to (surface lives in Articulate index today) |
+| Eloquent: Serialization | `articulate/serialization` | **M23** | Write with API Resources |
+| Eloquent: API Resources | `eloquent-resources` / `api-resources` | **M23** | Write when Resources ship |
+| Eloquent: Factories | `database/factories` | **M24** | Write when factories ship |
+| MongoDB / NoSQL | `database/nosql` (+ Articulate pages) | **M25** | Write when document-store driver ships — core Articulate multi-store, not a satellite ORM |
+| Scout / Search | `scout` / `search` | **M27** | Write when search ships |
+| Queues | `queues` | **M11** | Write when queues ship |
 | Mail | `mail` | **M12** | Write when mail ships |
 | Notifications | `notifications` | **M13** | Write when notifications ship |
+| Testing | `testing` (+ subpages) | **M28** | Write when testing toolkit expands |
+| Packages | `packages` | **M29** | Write package-dev guidelines when that milestone lands |
 
-Starlight **Digging Deeper** sidebar grows with those pages; do not stub fake APIs ahead of the milestones.
+Starlight **Digging Deeper** / **Security** / **Database** / **Packages** sidebars grow with those pages.
 
 ## Decision: Views — Caliburn
 
@@ -343,7 +410,7 @@ Ship a dedicated **Caliburn** sidebar group (peer to Articulate / Database), Lar
 Pages land as each ladder rung ships — do not wait for M6 close to start the section.
 ## Decision: Scope discipline
 
-Bite-sized milestones. **No** queues, notifications, scheduler, or mail until the **HTTP + validation + i18n + ORM + views + auth** core path is boring and tested (through M7). Seeders ship with M5 ORM; **model factories follow later** (still binding — they are how seeders scale). Caliburn is its own track after the core gate. Error handling, console (incl. a Tinker-class REPL), filesystem, queues, **mail**, and **notifications** are sketched as **M8–M13** so the roadmap is honest — they are not next work until their predecessors land. Multi-version docs + Prologue stay on the docs track (see Documentation site decision).
+Bite-sized milestones. **No** queues, notifications, scheduler, or mail until the **HTTP + validation + i18n + ORM + views + auth** core path is boring and tested (through M7). Seeders ship with M5 ORM; **model factories follow at M24**; **Articulate NoSQL / document stores at M25** (multi-store core — see ORM decision). Caliburn is its own track after the core gate. Error handling, console (incl. a Tinker-class REPL), filesystem, queues, **mail**, and **notifications** are sketched as **M8–M13**; Digging Deeper + Articulate follow-ons (helpers through packages, including NoSQL) are sketched as **M14–M29** so the roadmap is honest — they are not next work until their predecessors land. Multi-version docs + Prologue stay on the docs track (see Documentation site decision). **Localization docs** and **Articulate Mutators/Casts docs** are docs-track follow-ups on already-shipped M4/M5 code — they may land before M14.
 
 **Localization is the one deliberate exception to “defer until needed.”** It sits at M4 because retrofitting translations across four message-producing layers costs far more than building them translatable. M4 exhausts **full Laravel localization parity** (not a thin core) — see the localization decision.
 
@@ -692,7 +759,7 @@ Full Eloquent parity — see the ORM decision above for the binding ladder. M5 e
 - `Collection` return type; `paginate` / `simple_paginate`
 - Local + global scopes, soft deletes, model events + observers
 - Schema builder over SQLAlchemy DDL; Python migrator (`make:model`, `make:migration` with name inference, `migrate` / `rollback` / `fresh` / `status`) — not Alembic revisions. Column-line modifiers include **`->index()`** / `->unique()` (and table-level `index` / `unique`)
-- Seeders: `Seeder` call API, `WithoutModelEvents`, `make:seeder`, `db:seed` / `migrate --seed` / `migrate:fresh --seed`, scaffold `DatabaseSeeder` (factories deferred — see Later)
+- Seeders: `Seeder` call API, `WithoutModelEvents`, `make:seeder`, `db:seed` / `migrate --seed` / `migrate:fresh --seed`, scaffold `DatabaseSeeder` (factories deferred — **M24**)
 - Living example: `GET /api/orm` feature tour; `/api/posts` / `/api/users` cover eager load, scopes, soft deletes, pivot roles, morph comments, pagination, upsert
 - Feature docs: [`website/…/articulate/`](../website/src/content/docs/articulate/) + [`database/`](../website/src/content/docs/database/)
 
@@ -743,13 +810,13 @@ Full Eloquent parity — see the ORM decision above for the binding ladder. M5 e
 | --- | --- |
 | Starter-kit auth UI (Breeze-class scaffolds) | Starter kits |
 | Sanctum / Passport / Socialite | First-party packages / Later |
-| Authorization (Gates / Policies) | Later security milestone (Laravel’s separate Authorization docs) |
+| Authorization (Gates / Policies) | **M19** (Laravel’s separate Authorization docs) |
 | Email verification | **M13** notifications (+ mail channel) |
 | Real outbound reset mail | **M12** mail / **M13** notifications — broker + token API ships now |
 
 **Gate:** ladder exhausted, Auth/Hashing/Passwords docs published, progress uses real credentials, coverage ≥ 98% (auth + hashing + passwords packages aim 100%).
 
-**Status (M7):** Ladder shipped — session/CSRF/EncryptCookies; `Hash` (bcrypt + optional `argon2`/`argon2id`); session + token guards (`attempt`/`login`/`logout`/`once*`/`login_using_id`, remember-me **Set-Cookie**, rehash-on-login); `auth`/`guest`/`password.confirm`/`auth.basic`/`auth.start`; `Request.user()`; intended URL; auth events; `Password` broker (memory + optional DB table); catalogs; scaffold `config/auth.py` + `config/hashing.py`; Starlight Authentication/Hashing/Passwords; progress login + `/api/me`. Deferred by design: Sanctum/Passport/Socialite, Gates/Policies; email verification → **M13**; outbound reset mail → **M12**/**M13**.
+**Status (M7):** Ladder shipped — session/CSRF/EncryptCookies; `Hash` (bcrypt + optional `argon2`/`argon2id`); session + token guards (`attempt`/`login`/`logout`/`once*`/`login_using_id`, remember-me **Set-Cookie**, rehash-on-login); `auth`/`guest`/`password.confirm`/`auth.basic`/`auth.start`; `Request.user()`; intended URL; auth events; `Password` broker (memory + optional DB table); catalogs; scaffold `config/auth.py` + `config/hashing.py`; Starlight Authentication/Hashing/Passwords; progress login + `/api/me`. **Deferred by design:** Sanctum/Passport/Socialite; Gates/Policies → **M19**; email verification → **M13**; outbound reset mail → **M12**/**M13**.
 
 ### M8 — Error handling (`avalon.exceptions` + `avalon.log`)
 
@@ -777,14 +844,17 @@ Grail today is a thin Typer entry (`version`, `serve`, `make:*`, `migrate`, …)
 - Command discovery: `app/Console/Commands`, `python grail list`, `python grail make:command`
 - Framework commands stay in `avalon.console`; app commands register via provider or auto-discover
 - Input / output helpers (arguments, options, tables, confirm) — exhaust the DX, not a stub Typer wrapper
+- **Avalon Prompts** (`avalon.console.prompts`) — Laravel Prompts-class interactive UI: `text`, `textarea`, `password`, `number`, `confirm`, `select`, `multiselect`, `suggest`, `search`, `spin`, `progress`, `note`/`info`/`warning`/`error`/`alert`, with non-TTY / CI fallbacks; Command `ask` / `choice` / `secret` / `anticipate`
 - **Scheduler:** `routes/console.py` or `app/Console/Kernel` schedule DSL (`daily`, `hourly`, `every_minute`, cron expressions)
 - `python grail schedule:run` / `schedule:work` (long-running ticker) suitable for cron or a dedicated process
-- Overlap / mutex for scheduled tasks (filesystem lock is enough until Redis/cache exists)
+- Overlap / mutex for scheduled tasks (filesystem lock is enough until **M15** cache / **M16** Redis)
 - Console-side rendering of uncaught exceptions, wired to the M8 handler
-- **Interactive REPL (Tinker-class)** — a user-friendly Python shell with the app booted (container, facades, models, DB). Laravel parallel: `php artisan tinker`. **Product / command name TBD** (Arthurian; not locked — candidates live outside this contract until chosen). Requirements regardless of name: boot `Application` once, rich display (pretty repr / tables), optional `ipython`/`ptpython` when installed with a solid stdlib fallback, no raw “drop into bare `code.interact` and hope.” Ship as `python grail <name>` (or agreed alias).
+- **Interactive REPL (Tinker-class) — `python grail fiddle`** — user-friendly Python shell with the app booted (container, helpers, models, DB). Laravel parallel: `php artisan tinker`. Prefer **IPython** (`avalon[fiddle]` / `avalon[dev]`) with colored prompts + syntax highlighting; else ptpython; else Rich-enhanced fallback (never a bare undecorated `code.interact` without guidance). Boot `Application` once; pretty repr; history/completion when the preferred shell is available.
 - Living example: at least one app command + one scheduled task + a smoke that the REPL boots and can resolve a model / run a trivial query
 
 **Depends on:** solid Application boot (done); M8 for console exception rendering. Does **not** require queues — scheduled closures/commands run in-process; queue integration is M11. The REPL may land with M9 or as a fast follow once the console kernel exists — it must not be forgotten.
+
+**Status (M9):** Ladder shipped — `Command` base + discovery (`app/console/commands`, `avalon.console.commands`); `grail list` / `make:command` / `inspire`; schedule DSL (`every_minute` / `hourly` / `daily` / cron) + `schedule:run` / `schedule:work` + filesystem mutex; console exceptions report through M8 Handler; **`grail fiddle`** REPL (IPython preferred → ptpython → Rich fallback); **Avalon Prompts** (`avalon.console.prompts` — Laravel Prompts-shaped `text`/`select`/`confirm`/`spin`/`progress` + Command `ask`/`choice`/`secret`/`anticipate`); **`dump()` / `dd()`** (`avalon.debug` — Rich CLI + HTML/JSON HTTP dump pages); progress `progress:hello` / `progress:prompts` + `/dd` · `/api/dd` + `routes/console.py`; smoke + docs.
 
 ### M10 — Filesystem (`avalon.filesystem`)
 
@@ -799,11 +869,13 @@ FlySystem-shaped **Storage** façade — app code never talks to raw `pathlib` f
 
 **Depends on:** M2 request files (done). Natural prerequisite for queue failed-job payloads and **M12** mail attachments.
 
+**Status (M10):** Ladder exhausted — `Storage` / `storage()` / disks (`local`, `public`, `memory`, S3 via `avalon[s3]`); real `read_stream` / `write_stream` on local; visibility (+ chmod best-effort); `config/filesystems.py`; `storage:link`; UploadedFile `store` / `store_as` + `put_file` / `put_file_async`; **`temporary_url` raises on local/memory** (S3-only, Laravel-honest); provider; progress + docs + tests.
+
 ### M11 — Queues + job workers (`avalon.queue`)
 
 - `Job` base: `handle()`, `dispatch()`, delay, tries, backoff, timeout
 - `ShouldQueue` vs sync dispatch; `dispatch_sync` escape hatch
-- Queue connection drivers: **database** (after M5) and/or **Redis**; **sync** driver for tests/dev default
+- Queue connection drivers: **database** (after M5) and/or **Redis** (**M16** driver); **sync** driver for tests/dev default
 - `python grail queue:work` / `queue:listen` / `queue:retry` / `queue:failed`
 - Failed jobs table/store + `failed()` hook on Job; failures report through the **M8** handler
 - Middleware / job pipeline (rate limit, unique jobs — subset, exhaust what you claim)
@@ -813,6 +885,8 @@ FlySystem-shaped **Storage** façade — app code never talks to raw `pathlib` f
 **Depends on:** M5 for database queue; M8 for failure reporting; M9 for `queue:*` commands; M10 nice-to-have for job artifacts.
 
 **Unblocks:** queued mailables (M12) and queued notifications (M13).
+
+**Status (M11):** Ladder exhausted — `Job` / `ShouldQueue` / `dispatch` / `dispatch_sync`; **`timeout` enforced** via `asyncio.wait_for`; sync + database drivers; `queue:work` / `listen` / `failed` / `retry`; middleware + unique id; living demo `progress:demo` / `ProgressDigestJob`; tests + Queues docs.
 
 ### M12 — Mail (`avalon.mail`)
 
@@ -838,12 +912,14 @@ FlySystem-shaped **Storage** façade — app code never talks to raw `pathlib` f
 | --- | --- |
 | Notification channels / `Notifiable` | **M13** |
 | Email verification UX | **M13** (+ auth) |
-| Broadcast / Slack / SMS channels | Later / first-party extras |
+| Broadcast / Slack / SMS channels | **M26** / first-party extras |
 | Full third-party ESP kit matrix | Optional extras after SMTP baseline |
 
 **Depends on:** M6 Caliburn for Markdown/HTML mail views; M10 for attachment disks (soft — path attachments can ship earlier); M11 for `ShouldQueue` mailables (sync send ships without waiting on workers).
 
 **Gate:** ladder exhausted, Mail docs published, array/log drivers green in CI, SMTP documented, coverage ≥ 98% on `avalon.mail` (aim 100%).
+
+**Status (M12):** Ladder exhausted — `Mailable` (`envelope` / `content` / `attachments`); `ShouldQueue` honored on `send()` via serializable `SendQueuedMailable`; `Mail.to(…).send/queue`; log + array + SMTP; Markdown themes (`mail.themes.default` + builtin fallback) + `<x-mail.*>` components; Storage/path/bytes attachments; `MailAssertions`; living `WelcomeMail` via `progress:demo`; tests + Mail docs.
 
 ### M13 — Notifications (`avalon.notifications`)
 
@@ -866,7 +942,7 @@ FlySystem-shaped **Storage** façade — app code never talks to raw `pathlib` f
 
 | Item | Home |
 | --- | --- |
-| Broadcast / Slack / SMS / push | Later / first-party packages |
+| Broadcast / Slack / SMS / push | **M26** / first-party packages |
 | Notification inbox SPA | Starter kits / app code |
 | Marketing drip / bulk mail | Outside framework core |
 
@@ -874,18 +950,236 @@ FlySystem-shaped **Storage** façade — app code never talks to raw `pathlib` f
 
 **Gate:** ladder exhausted, Notifications docs published, mail + database channels tested, password-reset outbound no longer pluggable-only theater, coverage ≥ 98% on `avalon.notifications` (aim 100%).
 
+**Status (M13):** Ladder exhausted — `Notifiable` / `Notification` / channels (mail/database/log/array); `ShouldQueue` via serializable `SendQueuedNotification` (no double-send); `MustVerifyEmail` + **signed** verification URLs + **`verified` middleware** + progress `/email/verify*` routes; `ResetPasswordNotification` as password-broker default; Authentication + Passwords docs updated; living `progress:demo` notify path; progress `User` is Notifiable; tests + Notifications docs.
+
+### M14 — Helpers + Strings (`avalon.support`)
+
+Laravel [Helpers](https://laravel.com/docs/helpers) + [Strings](https://laravel.com/docs/strings) parity on top of the shipped Support `Collection`.
+
+- Global / module helpers mirroring Laravel’s helper catalog that Avalon does not already own (`abort_if`, `blank`, `filled`, `data_get` / `data_set`, `value`, `tap`, `with_`, `optional`, `retry`, `throw_if`, …) — exhaust what you claim; skip PHP-only relics
+- `Str` / `Stringable` fluent string API (`avalon.support.Str`) — `of`, `camel`, `snake`, `slug`, `limit`, `contains`, `replace_*`, `uuid`, … Laravel Strings surface
+- Docs: Starlight **Helpers** + **Strings**; Collections page stays the collection-only entry
+- Living example / tests for the helper surface used by scaffolded apps
+
+**Depends on:** Support Collections (done). Natural early Digging Deeper milestone — does not require M10–M13.
+
+**Gate:** claimed helper + `Str` surface exhausted, docs published, coverage ≥ 98% on new modules.
+
+**Status (M14):** Ladder exhausted — `Arr`, `Number`, `data_*` / misc helpers (`blank`, `tap`, `optional`, `retry`, `abort_if`, path helpers, …); `Str` / `Stringable` / `str_()`; Starlight Helpers + Strings; progress `progress:helpers`; tests + smoke.
+
+### M15 — Cache (`avalon.cache`)
+
+Laravel [Cache](https://laravel.com/docs/cache) store — first consumer of schedule mutex upgrades and queue unique locks.
+
+- `Cache` façade: `get` / `put` / `forever` / `forget` / `flush` / `remember` / `remember_forever` / `add` / `pull` / `touch` / `many` / `put_many` / locks (`lock` / `block` / `restore_lock` / `flush_locks` / `without_overlapping`)
+- Drivers: **array** (tests), **file**, **database** (M5); Redis driver lands with **M16**
+- Atomic `add` on all stores; database locks via `cache_locks` table; file locks via `flock`
+- Tags on **array** only (file/database raise — Laravel-honest); Redis tags in M16
+- `config/cache.py`; `cache()` helper; `Cache.extend` for custom drivers
+- Upgrade M9 schedule mutex to prefer cache locks when configured
+- Docs: Starlight **Cache**
+
+**Depends on:** M5 for database driver; M9 for scheduler consumer. Soft-depends on M10 for file paths under `storage/framework/cache`.
+
+**Gate:** façade + array/file/database green; docs published; coverage ≥ 98%.
+
+**Status (M15):** Ladder exhausted — `Cache` / `cache()`; array + file + database + null stores; atomic `add` / locks (`cache_locks`, file flock); tags on array only; `touch` / `restore_lock` / `flush_locks` / `extend`; schedule `without_overlapping` prefers cache locks; scaffold `config/cache.py`; progress `progress:cache`; Starlight Cache; tests + smoke.
+
+### M16 — Redis (`avalon.redis` + drivers)
+
+Laravel [Redis](https://laravel.com/docs/redis) connection manager and first-party drivers for session, cache, and queues.
+
+- Redis connection / cluster config (`config/database.py` redis connections or `config/redis.py`)
+- Drivers: **session** (M7 session stack), **cache** (M15), **queue** (M11) — opt-in via config; file/cookie/database remain defaults for local
+- `Redis` façade for app-level get/set/pubsub primitives used by those drivers
+- Docs: Starlight **Redis**; update Session / Cache / Queues pages for the Redis driver
+
+**Depends on:** M7 session, M11 queues, M15 cache. Optional `avalon[redis]` extra.
+
+**Gate:** at least one driver path proven end-to-end (cache or session); docs honest about extras; coverage ≥ 98% on Redis package.
+
+### M17 — Encryption (`avalon.encryption`)
+
+Laravel [Encryption](https://laravel.com/docs/encryption) — app-facing `Crypt` beyond cookie middleware.
+
+- `Crypt.encrypt` / `decrypt` / `encrypt_string` / `decrypt_string` using `APP_KEY`
+- Serialize-aware encrypt (PHP `serialize` → Python pickle/JSON policy documented; prefer JSON-safe payloads)
+- Rotate / previous keys story if Laravel parity requires it
+- Reuse or wrap the M7 cookie cipher so there is one keying story
+- Docs: Starlight **Encryption** (Security sidebar)
+
+**Depends on:** M7 `APP_KEY` + cookie encrypt (done). Can land parallel to M14–M16 if keying stays shared.
+
+**Gate:** façade tested (tamper → fail), docs published, coverage ≥ 98%.
+
+### M18 — Events (`avalon.events`)
+
+Application-level event dispatcher — distinct from Articulate **model** events (already shipped).
+
+- `Event` / `dispatch` / `listen` / `subscribe`; queued listeners when M11 exists
+- `EventServiceProvider`-shaped registration or `Event::listen` in providers
+- Wildcard / class listeners; `ShouldBroadcast` hooks deferred to **M26**
+- Docs: Starlight **Events** (Digging Deeper); Articulate model-events page stays separate
+
+**Depends on:** Application container (done); M11 for queued listeners (sync always).
+
+**Gate:** dispatcher + provider registration exhausted, docs published, coverage ≥ 98%.
+
+### M19 — Authorization (`avalon.auth` Gates / Policies)
+
+Laravel [Authorization](https://laravel.com/docs/authorization) — Gates and Policies (deferred from M7).
+
+- `Gate::define` / `allows` / `denies` / `authorize` / `any` / `none`
+- Policy classes + `make:policy`; auto-discovery; `Authorizable` on user
+- Controller/`FormRequest` integration (`authorize` resource abilities)
+- Caliburn `@can` / `@cannot` when views need them
+- Docs: Starlight **Authorization** (Security sidebar)
+
+**Depends on:** M7 auth (done); M6 for `@can` directives.
+
+**Gate:** Gates + Policies exhausted, docs published, progress demo of a policy, coverage ≥ 98%.
+
+### M20 — HTTP Client
+
+Laravel [HTTP Client](https://laravel.com/docs/http-client) — outbound fluent HTTP for apps and package code.
+
+- `Http.get/post/…`, fluent headers/auth/timeout, JSON helpers, retry, pool
+- Fake / sequence assertions for tests
+- Async-friendly under ASGI (httpx or equivalent behind the façade)
+- Docs: Starlight **HTTP Client**
+
+**Depends on:** nothing hard; natural after core HTTP stack is boring.
+
+**Gate:** façade + fakes green in CI, docs published, coverage ≥ 98%.
+
+### M21 — Processes
+
+Laravel [Processes](https://laravel.com/docs/processes) — first-class subprocess DX.
+
+- `Process::run` / `start` / `pool` / `concurrently`; timeouts; input/output; fake for tests
+- Docs: Starlight **Processes**
+
+**Depends on:** console/testing helpers nice-to-have; otherwise independent.
+
+**Gate:** claimed surface exhausted, fakes work, docs published.
+
+### M22 — Concurrency
+
+Laravel [Concurrency](https://laravel.com/docs/concurrency) — run closures concurrently and collect results.
+
+- `Concurrency::run([...])` (async tasks / process driver as appropriate under ASGI)
+- Docs: Starlight **Concurrency**
+
+**Depends on:** M21 Processes if process driver is claimed; otherwise asyncio-only driver first.
+
+**Gate:** documented drivers work; docs published.
+
+### M23 — API Resources + Serialization
+
+Laravel [Eloquent API Resources](https://laravel.com/docs/eloquent-resources) + deeper [serialization](https://laravel.com/docs/eloquent-serialization) docs/DX.
+
+- `JsonResource` / `ResourceCollection`; `to_array` / `with_` / `additional`; conditional attributes
+- `make:resource`; wrap / pagination awareness
+- Articulate serialization docs: `hidden` / `visible` / `appends` / `to_dict` / `to_json` / date serialization (code largely M5 — exhaust docs + any gaps)
+- Docs: **API Resources** + Articulate **Serialization**
+
+**Depends on:** M5 ORM (done); API route polarity (done).
+
+**Gate:** Resources usable on `routes/api.py`, docs published, coverage ≥ 98%.
+
+### M24 — Model factories
+
+Eloquent/Laravel Factory parity — primary consumer is **seeders**.
+
+- `Factory` base, `definition()` / states / sequences, `make:factory`, `Model.factory()`, `create` / `make` / `count` / relationships
+- Wire `DatabaseSeeder` demos to factories the Laravel way
+- Docs: Database **Factories** (+ seeding page update)
+
+**Depends on:** M5 seeders (done). Homes after Articulate is boring in real apps.
+
+**Gate:** factory → seeder path green in progress/example, docs published, coverage ≥ 98%.
+
+### M25 — Articulate NoSQL / document stores
+
+Bake **document stores into Articulate core** under the multi-store contract (see ORM decision above) — first driver **MongoDB**, same `avalon.orm` DX where semantics match.
+
+- Connection store kinds in `config/database.py`; Mongo connection + `avalon[mongo]` extra (Motor/pymongo behind the driver — never in app signatures)
+- Document `Model` path: collection naming, `_id` / key inference, casts, accessors/mutators, dirty tracking, soft deletes (where meaningful), model events/observers
+- Query builder subset the driver can honor (`where` family, ordering, limit, aggregates that Mongo supports); honest errors for SQL-only APIs
+- Relationships: references + embeds (document-native); do **not** fake SQL pivots/joins
+- Schema story: collection indexes / setup commands — **not** SQL Blueprint theater mapped onto BSON
+- Factories (M24) and seeders work against document models once M25 lands (or soft-depend: document factory support in this milestone)
+- Living example: Progress (or dedicated demo) reading/writing a Mongo-backed model alongside SQL
+- Docs: Database **NoSQL** / Articulate document-store pages; update Getting Started to show store kinds
+
+**Depends on:** M5 SQL Articulate (done). Prefer after **M24** factories so seed/factory demos can cover both stores; may start design seams earlier without claiming exhaust.
+
+**Gate:** Mongo driver exhausted end-to-end (config → model → query → tests → docs); SQL regressions still green; coverage ≥ 98% on new driver code (aim 100%). Other NoSQL engines are follow-on drivers under the same abstraction — not claimed unless exhausted here.
+
+### M26 — Broadcasting
+
+Laravel [Broadcasting](https://laravel.com/docs/broadcasting) — Echo-class / websocket fan-out (deferred from M13 notification channels).
+
+- Broadcaster drivers (log/null + one real driver — Redis pub/sub or websocket bridge); `ShouldBroadcast` events
+- Channel auth; client contract documented (Echo-shaped JS lives in starter kits)
+- Docs: Starlight **Broadcasting**
+
+**Depends on:** M18 Events; M16 Redis nice-to-have for Redis broadcaster.
+
+**Gate:** at least null/log + one real path; docs published. Horizon-class UI out of scope.
+
+### M27 — Search
+
+Laravel Scout-class full-text search for Articulate models.
+
+- `Searchable` model mixin; sync / queue indexing; driver abstraction (collection/array for tests; Meilisearch / Typesense / similar as extras)
+- `grail scout:*` (or `search:*`) commands when useful
+- Docs: Starlight **Search** / Scout equivalent
+
+**Depends on:** M5 ORM; M11 for queued syncing (optional); document models (**M25**) should be searchable under the same mixin when honest.
+
+**Gate:** one driver path + fakes; docs published. Heavy engines stay optional extras.
+
+### M28 — Testing toolkit
+
+Expand beyond the current pytest + smoke/regression baseline toward Laravel’s [Testing](https://laravel.com/docs/testing) map.
+
+- HTTP tests: `AvalonTestCase` / async client helpers (`get`/`post`, assert status/json/session/auth)
+- Console tests: `grail` command assertions (exit code, output)
+- Mocking: façade fakes (Mail, Notification, Queue, Event, Http, Process) consolidated
+- Browser tests: Playwright/Selenium-class optional extra — document honestly; not required in core CI
+- Docs: Starlight **Testing** (+ HTTP / Console / Mocking subpages)
+
+**Depends on:** surfaces being faked (M11–M13, M18, M20, M21). Can grow incrementally; this milestone exhausts the documented toolkit.
+
+**Gate:** HTTP + console helpers used by framework tests themselves; docs published.
+
+### M29 — Package development
+
+Laravel [Package Development](https://laravel.com/docs/packages) guidelines for first-party and community packages.
+
+- Service provider discovery / scaffolding; `lang` / `config` / `views` publish tags
+- Naming, extras, testing expectations; `avalon` namespace vs third-party prefixes
+- Docs: Starlight **Package Development** (Packages / Prologue-adjacent)
+- Optional: `grail make:package` stub — only if it earns its keep
+
+**Depends on:** providers + lang namespaces (done); Caliburn/view publish patterns useful.
+
+**Gate:** guidelines published and followed by at least one in-repo optional package or documented example.
+
 ### Later (still deferred)
 
-- Broadcasting (Echo-class / websocket fan-out)
-- **Model factories** (Eloquent/Laravel Factory parity) — `Factory` base, `definition()` / states / sequences, `make:factory`, `Model.factory()`, `create` / `make` / `count` / relationships; primary consumer is **seeders** (`DatabaseSeeder` + demo data). Homes after Articulate is boring in real apps; do not leave seeders as the permanent only way to fake rows.
-- Policies/gates
+- Additional NoSQL engines beyond Mongo (Cosmos API, Dynamo-shaped, …) — same M25 store abstraction; exhaust per driver when demanded
+- Sanctum / Passport / Socialite (first-party packages)
 - Starter kits (web kit vs API kit reflecting route polarity)
 - Full Caliburn advanced parity (ongoing on M6 track)
 - Router DX sugar: `head`, `redirect`, `fallback`, `route()`, then `resource` / `apiResource`
-- Default security-headers + CORS middleware pack (post-M3 hardening; before or with M7 web stack)
+- Default security-headers + CORS middleware pack (post-M3 hardening; before or with M7 web stack — land when ready)
 - Production docs / optional `grail serve --workers`
 - **Docs site:** major-version switching + **Prologue** (changelogs, upgrade guides, release notes) — see Documentation site decision
-- Cache store (needed by schedule overlap upgrades + queue unique locks — introduce when first consumer needs it)
+- **Docs track (may land anytime):** Localization Starlight page (M4 code done); Articulate **Mutators & Casts** dedicated how-to (M5 code done)
+- Rate limiting middleware (pairs with cache locks once M15 exists)
+- Notification inbox SPA / marketing drip (outside framework core)
 
 ## Quality bar for “solid core”
 
@@ -899,6 +1193,6 @@ FlySystem-shaped **Storage** façade — app code never talks to raw `pathlib` f
 
 ## Next implementation focus
 
-**M8 error-handling gate met** — Handler + logging + publishable error views exhausted (see M8 status). **Next: M9** console + scheduler when ready. Roadmap through **M13** includes Mail (M12) and Notifications (M13) after queues.
+**M15 cache gate met** — Cache stores + locks exhausted (see M15 status). **Next: M16** Redis when ready. Roadmap continues **M16–M29** (Redis → encryption → events → authorization → HTTP client/processes/concurrency → API resources → factories → **Articulate NoSQL** → broadcasting → search → testing → packages).
 
-**Docs:** Error Handling / Logging how-tos published.
+**Docs (anytime):** Localization page (M4 code done); Mutators & Casts Articulate how-to (M5 code done). Error Handling / Logging / Artisan Console / Task Scheduling how-tos published.

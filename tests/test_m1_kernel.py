@@ -170,6 +170,10 @@ config = {
 
     monkeypatch.chdir(tmp_path)
     monkeypatch.syspath_prepend(str(tmp_path))
+    # Ensure no leftover living-example ``app`` package wins the import.
+    from tests.support import purge_generated_app_modules
+
+    purge_generated_app_modules()
     monkeypatch.delenv("APP_NAME", raising=False)
     monkeypatch.delenv("APP_DEBUG", raising=False)
 

@@ -136,6 +136,9 @@ class Application:
             for file in sorted(routes_dir.glob("*.py")):
                 if file.name.startswith("_"):
                     continue
+                # Console schedule routes load via ConsoleKernel, not HTTP boot.
+                if file.name == "console.py":
+                    continue
                 self._load_route_file(file)
         self._routes_loaded = True
 

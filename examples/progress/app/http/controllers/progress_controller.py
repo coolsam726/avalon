@@ -111,32 +111,44 @@ def _milestones() -> list[dict]:
         {
             "id": "M9",
             "name": "Console + scheduler",
-            "status": "next",
-            "proof": ["Command base", "grail list", "schedule:run", "REPL"],
+            "status": "complete",
+            "proof": [
+                "Command base + grail list",
+                "schedule:run / schedule:work",
+                "grail fiddle REPL",
+                "Avalon Prompts + dump()/dd()",
+                "progress:demo (M11–M13)",
+            ],
         },
         {
             "id": "M10",
             "name": "Filesystem",
-            "status": "planned",
-            "proof": ["Storage disks", "local + S3-compatible"],
+            "status": "complete",
+            "proof": ["Storage disks", "local + memory + S3", "storage:link"],
         },
         {
             "id": "M11",
             "name": "Queues + workers",
-            "status": "planned",
+            "status": "complete",
             "proof": ["Job dispatch", "queue:work", "failed jobs"],
         },
         {
             "id": "M12",
             "name": "Mail",
-            "status": "planned",
+            "status": "complete",
             "proof": ["Mailable + Mailer", "log/array/SMTP", "Markdown mail"],
         },
         {
             "id": "M13",
             "name": "Notifications",
-            "status": "planned",
+            "status": "complete",
             "proof": ["Notifiable", "mail + database channels", "email verification"],
+        },
+        {
+            "id": "M14",
+            "name": "Helpers + Strings",
+            "status": "next",
+            "proof": ["Helpers catalog", "Str / Stringable"],
         },
     ]
 

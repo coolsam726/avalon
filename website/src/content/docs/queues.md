@@ -1,0 +1,51 @@
+---
+title: Queues
+description: Jobs, sync and database drivers, workers, and failed jobs.
+---
+
+## Dispatching jobs
+
+```python
+from avalon.queue import Job, ShouldQueue, dispatch
+
+class SendDigest(ShouldQueue, Job):
+    tries = 3
+    backoff = 10
+
+    def __init__(self, user_id: int) -> None:
+        self.user_id = user_id
+
+    def handle(self) -> None:
+        ...
+
+await dispatch(SendDigest(1))
+await SendDigest.dispatch(user_id=1)
+```
+
+Jobs without `ShouldQueue` (and without `queue = True`) run synchronously. Use `dispatch_sync(job)` to force in-process execution.
+
+## Drivers
+
+| Connection | Driver | Notes |
+| --- | --- | --- |
+| `sync` | Immediate | Default for tests/dev |
+| `database` | `jobs` / `failed_jobs` tables | Call `ensure_tables()` or migrate |
+
+Redis queue driver lands in **M16**.
+
+## Workers
+
+```bash
+python grail queue:work
+python grail queue:listen
+python grail queue:failed
+python grail queue:retry {id}
+```
+
+Failed jobs call `job.failed(exc)` and report through the M8 exception Handler when available.
+
+## Related
+
+- [File Storage](/filesystem/)
+- [Mail](/mail/) — queued mailables
+- [Notifications](/notifications/) — queued notifications

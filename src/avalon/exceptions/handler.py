@@ -43,6 +43,10 @@ class Handler:
         self._renderable.append((exc_type, callback))
 
     def should_report(self, exc: BaseException) -> bool:
+        from avalon.debug import DumpAndDie
+
+        if isinstance(exc, DumpAndDie):
+            return False
         if status_for_exception(exc) < 500:
             return False
         for cls in self.dont_report:
@@ -75,6 +79,8 @@ class Handler:
         logger.exception("%s: %s", type(exc).__name__, exc)
 
     def render(self, request: Request, exc: BaseException) -> StarletteResponse:
+        from avalon.debug import DumpAndDie
+
         for exc_type, callback in self._renderable:
             if isinstance(exc, exc_type):
                 response = callback(request, exc)
@@ -87,9 +93,39 @@ class Handler:
             if response is not None:
                 return response
 
+        if isinstance(exc, DumpAndDie):
+            return self._render_dd(request, exc)
+
         if self._is_api(request):
             return self._render_json(request, exc)
         return self._render_html(request, exc)
+
+    def _render_dd(self, request: Request, exc: Any) -> StarletteResponse:
+        from avalon.console.display import serialize
+        from avalon.debug import render_dd_html
+
+        if self._is_api(request):
+            return JSONResponse(
+                {
+                    "dd": True,
+                    "caller": str(exc.caller) if exc.caller else None,
+                    "function": exc.caller.function if exc.caller else None,
+                    "values": [serialize(value) for value in exc.values],
+                },
+                status_code=200,
+            )
+
+        app_name = "Avalon"
+        if self.app is not None:
+            app_name = str(self.app.config.get("app.name", "Avalon"))
+        body = render_dd_html(
+            tuple(exc.values),
+            caller=exc.caller,
+            request_method=request.method,
+            request_path=request.path,
+            app_name=app_name,
+        )
+        return HTMLResponse(body, status_code=200)
 
     def _is_api(self, request: Request) -> bool:
         polarity = getattr(request, "route_polarity", None)

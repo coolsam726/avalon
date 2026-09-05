@@ -37,12 +37,35 @@ class FoundationServiceProvider(ServiceProvider):
         AuthServiceProvider(app).register()
         LoggingServiceProvider(app).register()
         ExceptionsServiceProvider(app).register()
+        from avalon.console.provider import ConsoleServiceProvider
+
+        ConsoleServiceProvider(app).register()
+        from avalon.filesystem.provider import FilesystemServiceProvider
+        from avalon.queue.provider import QueueServiceProvider
+
+        FilesystemServiceProvider(app).register()
+        QueueServiceProvider(app).register()
+        from avalon.mail.provider import MailServiceProvider
+
+        MailServiceProvider(app).register()
+        from avalon.notifications.provider import NotificationServiceProvider
+
+        NotificationServiceProvider(app).register()
+        from avalon.cache.provider import CacheServiceProvider
+
+        CacheServiceProvider(app).register()
 
     def boot(self) -> None:
         from avalon.auth.provider import AuthServiceProvider
+        from avalon.cache.provider import CacheServiceProvider
         from avalon.caliburn.provider import CaliburnServiceProvider
+        from avalon.console.provider import ConsoleServiceProvider
         from avalon.exceptions.provider import ExceptionsServiceProvider
+        from avalon.filesystem.provider import FilesystemServiceProvider
         from avalon.log.provider import LoggingServiceProvider
+        from avalon.mail.provider import MailServiceProvider
+        from avalon.notifications.provider import NotificationServiceProvider
+        from avalon.queue.provider import QueueServiceProvider
         from avalon.orm.provider import DatabaseServiceProvider
         from avalon.translation.provider import TranslationServiceProvider
 
@@ -53,3 +76,9 @@ class FoundationServiceProvider(ServiceProvider):
         AuthServiceProvider(self.app).boot()
         LoggingServiceProvider(self.app).boot()
         ExceptionsServiceProvider(self.app).boot()
+        ConsoleServiceProvider(self.app).boot()
+        FilesystemServiceProvider(self.app).boot()
+        QueueServiceProvider(self.app).boot()
+        MailServiceProvider(self.app).boot()
+        NotificationServiceProvider(self.app).boot()
+        CacheServiceProvider(self.app).boot()

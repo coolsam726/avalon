@@ -314,7 +314,125 @@ curl -sH 'Authorization: Bearer demo' http://127.0.0.1:3000/api/me
 
 ---
 
+## M9 — Console + scheduler
+
+Automated:
+
+```bash
+pytest -q tests/smoke/test_m9_smoke.py tests/test_m9_*.py
+make test-cov
+```
+
+Manual (from `examples/progress`):
+
+```bash
+python grail progress:hello Avalon
+python grail list
+python grail schedule:run
+python grail fiddle   # interactive; Ctrl-D to exit
+```
+
+### M9 exit criteria
+
+- [x] `Command` base + discovery; `grail list` / `make:command` / `inspire`
+- [x] Avalon Prompts (`text`/`select`/`confirm`/`spin`/`progress` + ask/choice)
+- [x] `dump()` / `dd()` (Rich CLI + web HTML / api JSON; `/dd` · `/api/dd`)
+- [x] Schedule DSL + `schedule:run` / `schedule:work` + filesystem mutex
+- [x] Console exceptions report through M8 Handler
+- [x] `grail fiddle` REPL (IPython → ptpython → Rich fallback)
+- [x] Progress `progress:hello` / `progress:prompts` + `routes/console.py`; smoke
+- [x] Coverage ≥ 98% (`avalon.console` 100%)
+- [x] No M10 work until this gate passes
+
+---
+
+## M10 — Filesystem
+
+```bash
+pytest -q tests/test_m10_filesystem.py tests/smoke/test_m10_smoke.py
+```
+
+### M10 exit criteria
+
+- [x] `Storage` / `storage()` / local + public + memory (+ S3 optional)
+- [x] `config/filesystems.py` + `storage:link`
+- [x] UploadedFile → `put_file` / `put_file_async`
+- [x] Docs + smoke; no M11 until green
+
+---
+
+## M11 — Queues
+
+```bash
+pytest -q tests/test_m11_queue.py tests/smoke/test_m11_smoke.py
+```
+
+### M11 exit criteria
+
+- [x] `Job` / `ShouldQueue` / `dispatch` / sync + database drivers
+- [x] `queue:work` / `listen` / `failed` / `retry` + failed jobs
+- [x] Docs + smoke; no M12 until green
+
+---
+
+## M12 — Mail
+
+```bash
+pytest -q tests/test_m12_*.py tests/smoke/test_m12_smoke.py
+```
+
+### M12 exit criteria
+
+- [x] `Mailable` + `Mail` façade; log / array / SMTP
+- [x] Attachments + assertions; Markdown/view content
+- [x] Docs + smoke; no M13 until green
+
+---
+
+## M13 — Notifications
+
+```bash
+pytest -q tests/test_m13_notifications.py tests/smoke/test_m13_smoke.py
+```
+
+### M13 exit criteria
+
+- [x] `Notifiable` + mail/database/log/array channels
+- [x] `MustVerifyEmail` + password-reset notification delivery
+- [x] Docs + smoke; no M14 until green
+
+---
+
+## M14 — Helpers + Strings
+
+```bash
+pytest -q tests/test_m14_*.py tests/smoke/test_m14_smoke.py
+```
+
+### M14 exit criteria
+
+- [x] `Arr` + misc helpers (`data_*`, `blank`, `tap`, `retry`, …)
+- [x] `Str` / `Stringable` + `Number`
+- [x] Docs + smoke; no M15 until green
+
+---
+
+## M15 — Cache
+
+```bash
+pytest -q tests/test_m15_*.py tests/smoke/test_m15_smoke.py
+```
+
+### M15 exit criteria
+
+- [x] `Cache` façade + array / file / database stores
+- [x] Atomic `add` + store-native locks; tags array-only (Laravel-honest)
+- [x] Docs + smoke; no M16 until green
+
+---
+
 ## Out of scope until later milestones
 
-- Console/scheduler, filesystem, queues (M9–M11)
-- Mail + Notifications (M12–M13)
+- Digging Deeper: Redis, encryption, events, authorization, HTTP client, processes, concurrency, API resources, factories, **Articulate NoSQL (M25)**, broadcasting, search, testing toolkit, package guidelines (M16–M29)
+- Localization + Mutators/Casts **docs** (code already shipped M4/M5)
+- Additional NoSQL engines beyond Mongo, and other Later extras — see [`PLAN.md`](PLAN.md)

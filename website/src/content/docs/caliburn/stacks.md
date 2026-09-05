@@ -44,6 +44,24 @@ Push fragments from a child view; flush them in the layout (usually **after**
 - `@error("field")` shows the block when `errors` is a field→messages mapping; `message` is the first error string.
 - `@asset(...)` calls the injected `asset()` helper (subpath-aware).
 
+## Debugging
+
+Laravel-shaped dump helpers for views:
+
+```html
+<!-- resources/views/debug.cal.html -->
+@dump(user)
+@dump(user, request)
+@dd(board)
+```
+
+| Directive | Behavior |
+| --- | --- |
+| `@dump(...)` | Embeds a styled HTML dump card in the page; rendering continues |
+| `@dd(...)` | Halts with Avalon's dump page (same as `from avalon import dd`) |
+
+Also available in Python as `from avalon import dump, dd`. See [Artisan Console](/console/#dump--dd).
+
 ## Custom directives
 
 Register handlers on the engine (or `ViewFactory.directive`). The handler

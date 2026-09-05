@@ -1,0 +1,984 @@
+"""Laravel-shaped ``Str`` / ``Stringable`` helpers."""
+
+from __future__ import annotations
+
+import base64
+import json
+import re
+import secrets
+import string
+import unicodedata
+import uuid
+from collections.abc import Callable, Iterable, Sequence
+from typing import Any, Self
+from urllib.parse import urlparse
+
+_UNCOUNTABLE = {
+    "equipment",
+    "information",
+    "rice",
+    "money",
+    "species",
+    "series",
+    "fish",
+    "sheep",
+    "deer",
+    "moose",
+    "aircraft",
+    "data",
+}
+
+_IRREGULAR = {
+    "move": "moves",
+    "foot": "feet",
+    "goose": "geese",
+    "sex": "sexes",
+    "child": "children",
+    "man": "men",
+    "woman": "women",
+    "tooth": "teeth",
+    "person": "people",
+    "ox": "oxen",
+}
+
+_PLURAL_RULES: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"(quiz)$", re.I), r"\1zes"),
+    (re.compile(r"^(ox)$", re.I), r"\1en"),
+    (re.compile(r"([m|l])ouse$", re.I), r"\1ice"),
+    (re.compile(r"(matr|vert|ind)ix|ex$", re.I), r"\1ices"),
+    (re.compile(r"(x|ch|ss|sh)$", re.I), r"\1es"),
+    (re.compile(r"([^aeiouy]|qu)y$", re.I), r"\1ies"),
+    (re.compile(r"(hive)$", re.I), r"\1s"),
+    (re.compile(r"(?:([^f])fe|([lr])f)$", re.I), r"\1\2ves"),
+    (re.compile(r"sis$", re.I), "ses"),
+    (re.compile(r"([ti])um$", re.I), r"\1a"),
+    (re.compile(r"(buffal|tomat)o$", re.I), r"\1oes"),
+    (re.compile(r"(bu)s$", re.I), r"\1ses"),
+    (re.compile(r"(alias|status)$", re.I), r"\1es"),
+    (re.compile(r"(octop|vir)us$", re.I), r"\1i"),
+    (re.compile(r"(ax|test)is$", re.I), r"\1es"),
+    (re.compile(r"s$", re.I), "s"),
+    (re.compile(r"$"), "s"),
+]
+
+_SINGULAR_RULES: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"(quiz)zes$", re.I), r"\1"),
+    (re.compile(r"(matr)ices$", re.I), r"\1ix"),
+    (re.compile(r"(vert|ind)ices$", re.I), r"\1ex"),
+    (re.compile(r"^(ox)en", re.I), r"\1"),
+    (re.compile(r"(alias|status)es$", re.I), r"\1"),
+    (re.compile(r"(octop|vir)i$", re.I), r"\1us"),
+    (re.compile(r"(cris|ax|test)es$", re.I), r"\1is"),
+    (re.compile(r"(shoe)s$", re.I), r"\1"),
+    (re.compile(r"(o)es$", re.I), r"\1"),
+    (re.compile(r"(bus)es$", re.I), r"\1"),
+    (re.compile(r"([m|l])ice$", re.I), r"\1ouse"),
+    (re.compile(r"(x|ch|ss|sh)es$", re.I), r"\1"),
+    (re.compile(r"(m)ovies$", re.I), r"\1ovie"),
+    (re.compile(r"(s)eries$", re.I), r"\1eries"),
+    (re.compile(r"([^aeiouy]|qu)ies$", re.I), r"\1y"),
+    (re.compile(r"([lr])ves$", re.I), r"\1f"),
+    (re.compile(r"(tive)s$", re.I), r"\1"),
+    (re.compile(r"(hive)s$", re.I), r"\1"),
+    (re.compile(r"(^analy)ses$", re.I), r"\1sis"),
+    (re.compile(r"((a)naly|(b)a|(d)iagno|(p)arenthe|(p)rogno|(s)ynop|(t)he)ses$", re.I), r"\1\2sis"),
+    (re.compile(r"([ti])a$", re.I), r"\1um"),
+    (re.compile(r"(n)ews$", re.I), r"\1ews"),
+    (re.compile(r"s$", re.I), ""),
+]
+
+
+class Str:
+    """Static string helpers (Laravel ``Illuminate\\Support\\Str``)."""
+
+    @staticmethod
+    def of(value: Any = "") -> Stringable:
+        return Stringable(value)
+
+    @staticmethod
+    def after(subject: str, search: str) -> str:
+        if search == "":
+            return subject
+        idx = subject.find(search)
+        return subject if idx < 0 else subject[idx + len(search) :]
+
+    @staticmethod
+    def after_last(subject: str, search: str) -> str:
+        if search == "":
+            return subject
+        idx = subject.rfind(search)
+        return subject if idx < 0 else subject[idx + len(search) :]
+
+    @staticmethod
+    def before(subject: str, search: str) -> str:
+        if search == "":
+            return subject
+        idx = subject.find(search)
+        return subject if idx < 0 else subject[:idx]
+
+    @staticmethod
+    def before_last(subject: str, search: str) -> str:
+        if search == "":
+            return subject
+        idx = subject.rfind(search)
+        return subject if idx < 0 else subject[:idx]
+
+    @staticmethod
+    def between(subject: str, from_: str, to: str) -> str:
+        if from_ == "" or to == "":
+            return subject
+        return Str.before(Str.after(subject, from_), to)
+
+    @staticmethod
+    def between_first(subject: str, from_: str, to: str) -> str:
+        return Str.between(subject, from_, to)
+
+    @staticmethod
+    def camel(value: str) -> str:
+        studly = Str.studly(value)
+        return studly[:1].lower() + studly[1:] if studly else ""
+
+    @staticmethod
+    def studly(value: str) -> str:
+        parts = re.split(r"[^a-zA-Z0-9]+", value)
+        return "".join(part[:1].upper() + part[1:] for part in parts if part)
+
+    @staticmethod
+    def snake(value: str, delimiter: str = "_") -> str:
+        value = re.sub(r"([a-z\d])([A-Z])", r"\1" + delimiter + r"\2", value)
+        value = re.sub(r"[^a-zA-Z0-9]+", delimiter, value)
+        return value.strip(delimiter).lower()
+
+    @staticmethod
+    def kebab(value: str) -> str:
+        return Str.snake(value, "-")
+
+    @staticmethod
+    def title(value: str) -> str:
+        return value.title()
+
+    @staticmethod
+    def headline(value: str) -> str:
+        parts = re.split(r"[_\-\s]+", Str.snake(value))
+        return " ".join(part[:1].upper() + part[1:] for part in parts if part)
+
+    @staticmethod
+    def apa(value: str) -> str:
+        # Approximate APA title case.
+        small = {
+            "a",
+            "an",
+            "and",
+            "as",
+            "at",
+            "but",
+            "by",
+            "for",
+            "in",
+            "nor",
+            "of",
+            "on",
+            "or",
+            "so",
+            "the",
+            "to",
+            "up",
+            "yet",
+        }
+        words = value.split()
+        result = []
+        for index, word in enumerate(words):
+            lower = word.lower()
+            if index not in (0, len(words) - 1) and lower in small:
+                result.append(lower)
+            else:
+                result.append(word[:1].upper() + word[1:])
+        return " ".join(result)
+
+    @staticmethod
+    def ascii(value: str) -> str:
+        normalized = unicodedata.normalize("NFKD", value)
+        return normalized.encode("ascii", "ignore").decode("ascii")
+
+    @staticmethod
+    def transliterate(value: str) -> str:
+        return Str.ascii(value)
+
+    @staticmethod
+    def char_at(subject: str, index: int) -> str | bool:
+        if index < 0 or index >= len(subject):
+            return False
+        return subject[index]
+
+    @staticmethod
+    def chop_start(subject: str, needle: str | Iterable[str]) -> str:
+        needles = [needle] if isinstance(needle, str) else list(needle)
+        for item in needles:
+            if subject.startswith(item):
+                return subject[len(item) :]
+        return subject
+
+    @staticmethod
+    def chop_end(subject: str, needle: str | Iterable[str]) -> str:
+        needles = [needle] if isinstance(needle, str) else list(needle)
+        for item in needles:
+            if subject.endswith(item):
+                return subject[: -len(item)]
+        return subject
+
+    @staticmethod
+    def contains(haystack: str, needles: str | Iterable[str], ignore_case: bool = False) -> bool:
+        items = [needles] if isinstance(needles, str) else list(needles)
+        target = haystack.lower() if ignore_case else haystack
+        for needle in items:
+            piece = needle.lower() if ignore_case else needle
+            if piece != "" and piece in target:
+                return True
+        return False
+
+    @staticmethod
+    def contains_all(haystack: str, needles: Iterable[str], ignore_case: bool = False) -> bool:
+        return all(Str.contains(haystack, needle, ignore_case=ignore_case) for needle in needles)
+
+    @staticmethod
+    def doesnt_contain(haystack: str, needles: str | Iterable[str], ignore_case: bool = False) -> bool:
+        return not Str.contains(haystack, needles, ignore_case=ignore_case)
+
+    @staticmethod
+    def deduplicate(value: str, character: str = " ") -> str:
+        return re.sub(rf"{re.escape(character)}+", character, value)
+
+    @staticmethod
+    def ends_with(haystack: str, needles: str | Iterable[str]) -> bool:
+        items = [needles] if isinstance(needles, str) else list(needles)
+        return any(haystack.endswith(item) for item in items if item != "")
+
+    @staticmethod
+    def starts_with(haystack: str, needles: str | Iterable[str]) -> bool:
+        items = [needles] if isinstance(needles, str) else list(needles)
+        return any(haystack.startswith(item) for item in items if item != "")
+
+    @staticmethod
+    def excerpt(text: str, phrase: str = "", *, options: dict[str, Any] | None = None) -> str | None:
+        opts = options or {}
+        radius = int(opts.get("radius", 100))
+        omission = str(opts.get("omission", "..."))
+        if phrase == "":
+            return text[:radius] + (omission if len(text) > radius else "")
+        idx = text.lower().find(phrase.lower())
+        if idx < 0:
+            return None
+        start = max(0, idx - radius)
+        end = min(len(text), idx + len(phrase) + radius)
+        excerpt = text[start:end]
+        if start > 0:
+            excerpt = omission + excerpt
+        if end < len(text):
+            excerpt = excerpt + omission
+        return excerpt
+
+    @staticmethod
+    def finish(value: str, cap: str) -> str:
+        quoted = re.escape(cap)
+        return re.sub(rf"(?:{quoted})+$", "", value) + cap
+
+    @staticmethod
+    def start(value: str, prefix: str) -> str:
+        quoted = re.escape(prefix)
+        return prefix + re.sub(rf"^({quoted})+", "", value)
+
+    @staticmethod
+    def is_(pattern: str | Iterable[str], value: str) -> bool:
+        patterns = [pattern] if isinstance(pattern, str) else list(pattern)
+        for item in patterns:
+            if item == value:
+                return True
+            regex = re.escape(item).replace(r"\*", ".*")
+            if re.fullmatch(regex, value) is not None:
+                return True
+        return False
+
+    @staticmethod
+    def is_ascii(value: str) -> bool:
+        try:
+            value.encode("ascii")
+            return True
+        except UnicodeEncodeError:
+            return False
+
+    @staticmethod
+    def is_json(value: str) -> bool:
+        try:
+            json.loads(value)
+            return True
+        except Exception:
+            return False
+
+    @staticmethod
+    def is_url(value: str, protocols: Sequence[str] | None = None) -> bool:
+        parsed = urlparse(value)
+        if not parsed.scheme or not parsed.netloc:
+            return False
+        if protocols is not None and parsed.scheme not in protocols:
+            return False
+        return True
+
+    @staticmethod
+    def is_uuid(value: str) -> bool:
+        try:
+            uuid.UUID(str(value))
+            return True
+        except Exception:
+            return False
+
+    @staticmethod
+    def is_ulid(value: str) -> bool:
+        return bool(re.fullmatch(r"[0-7][0-9A-HJKMNP-TV-Z]{25}", value, re.I))
+
+    @staticmethod
+    def length(value: str, encoding: str | None = None) -> int:
+        del encoding
+        return len(value)
+
+    @staticmethod
+    def limit(value: str, limit: int = 100, end: str = "...") -> str:
+        if len(value) <= limit:
+            return value
+        return value[: max(0, limit)].rstrip() + end
+
+    @staticmethod
+    def words(value: str, words: int = 100, end: str = "...") -> str:
+        parts = value.split()
+        if len(parts) <= words:
+            return value
+        return " ".join(parts[:words]) + end
+
+    @staticmethod
+    def lower(value: str) -> str:
+        return value.lower()
+
+    @staticmethod
+    def upper(value: str) -> str:
+        return value.upper()
+
+    @staticmethod
+    def lcfirst(value: str) -> str:
+        return value[:1].lower() + value[1:]
+
+    @staticmethod
+    def ucfirst(value: str) -> str:
+        return value[:1].upper() + value[1:]
+
+    @staticmethod
+    def ucsplit(value: str) -> list[str]:
+        return re.findall(r"[A-Z]?[^A-Z]*", value)[:-1] or ([value] if value else [])
+
+    @staticmethod
+    def mask(value: str, character: str, index: int, length: int | None = None) -> str:
+        if character == "":
+            return value
+        start = index if index >= 0 else max(0, len(value) + index)
+        if length is None:
+            length = len(value) - start
+        end = min(len(value), start + max(0, length))
+        return value[:start] + (character * (end - start)) + value[end:]
+
+    @staticmethod
+    def pad_both(value: str, length: int, pad: str = " ") -> str:
+        return value.center(length, pad[:1] if pad else " ")
+
+    @staticmethod
+    def pad_left(value: str, length: int, pad: str = " ") -> str:
+        return value.rjust(length, pad[:1] if pad else " ")
+
+    @staticmethod
+    def pad_right(value: str, length: int, pad: str = " ") -> str:
+        return value.ljust(length, pad[:1] if pad else " ")
+
+    @staticmethod
+    def password(length: int = 32, letters: bool = True, numbers: bool = True, symbols: bool = True, spaces: bool = False) -> str:
+        alphabet = ""
+        if letters:
+            alphabet += string.ascii_letters
+        if numbers:
+            alphabet += string.digits
+        if symbols:
+            alphabet += "!@#$%^&*()-_=+[]{};:,.?/"
+        if spaces:
+            alphabet += " "
+        if not alphabet:
+            alphabet = string.ascii_letters
+        return "".join(secrets.choice(alphabet) for _ in range(max(1, length)))
+
+    @staticmethod
+    def plural(value: str, count: int | float = 2) -> str:
+        if abs(count) in (1, 1.0):
+            return value
+        lower = value.lower()
+        if lower in _UNCOUNTABLE:
+            return value
+        for singular, plural in _IRREGULAR.items():
+            if lower == singular:
+                return _match_case(value, plural)
+            if lower == plural:
+                return value
+        for pattern, replacement in _PLURAL_RULES:
+            if pattern.search(value):
+                return pattern.sub(replacement, value)
+        return value + "s"
+
+    @staticmethod
+    def singular(value: str) -> str:
+        lower = value.lower()
+        if lower in _UNCOUNTABLE:
+            return value
+        for singular, plural in _IRREGULAR.items():
+            if lower == plural:
+                return _match_case(value, singular)
+            if lower == singular:
+                return value
+        for pattern, replacement in _SINGULAR_RULES:
+            if pattern.search(value):
+                return pattern.sub(replacement, value)
+        return value
+
+    @staticmethod
+    def plural_studly(value: str, count: int | float = 2) -> str:
+        parts = re.findall(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])|\d+", value)
+        if not parts:
+            return Str.plural(value, count)
+        parts[-1] = Str.plural(parts[-1], count)
+        return "".join(parts)
+
+    @staticmethod
+    def position(haystack: str, needle: str, offset: int = 0) -> int | bool:
+        idx = haystack.find(needle, offset)
+        return idx if idx >= 0 else False
+
+    @staticmethod
+    def random(length: int = 16) -> str:
+        alphabet = string.ascii_letters + string.digits
+        return "".join(secrets.choice(alphabet) for _ in range(max(0, length)))
+
+    @staticmethod
+    def remove(search: str | Iterable[str], subject: str, *, case_sensitive: bool = True) -> str:
+        items = [search] if isinstance(search, str) else list(search)
+        result = subject
+        for item in items:
+            if case_sensitive:
+                result = result.replace(item, "")
+            else:
+                result = re.sub(re.escape(item), "", result, flags=re.I)
+        return result
+
+    @staticmethod
+    def repeat(value: str, times: int) -> str:
+        return value * max(0, times)
+
+    @staticmethod
+    def replace(
+        search: str | Iterable[str],
+        replace: str | Iterable[str],
+        subject: str,
+        *,
+        case_sensitive: bool = True,
+    ) -> str:
+        if isinstance(search, str) and isinstance(replace, str):
+            if case_sensitive:
+                return subject.replace(search, replace)
+            return re.sub(re.escape(search), replace, subject, flags=re.I)
+        searches = list(search) if not isinstance(search, str) else [search]
+        replacements = list(replace) if not isinstance(replace, str) else [replace] * len(searches)
+        result = subject
+        for item, repl in zip(searches, replacements, strict=False):
+            result = Str.replace(item, repl, result, case_sensitive=case_sensitive)
+        return result
+
+    @staticmethod
+    def replace_array(search: str, replace: Sequence[str], subject: str) -> str:
+        parts = subject.split(search)
+        result = parts[0]
+        for index, part in enumerate(parts[1:]):
+            repl = replace[index] if index < len(replace) else search
+            result += repl + part
+        return result
+
+    @staticmethod
+    def replace_first(search: str, replace: str, subject: str) -> str:
+        return subject.replace(search, replace, 1)
+
+    @staticmethod
+    def replace_last(search: str, replace: str, subject: str) -> str:
+        idx = subject.rfind(search)
+        if idx < 0:
+            return subject
+        return subject[:idx] + replace + subject[idx + len(search) :]
+
+    @staticmethod
+    def replace_start(search: str, replace: str, subject: str) -> str:
+        if subject.startswith(search):
+            return replace + subject[len(search) :]
+        return subject
+
+    @staticmethod
+    def replace_end(search: str, replace: str, subject: str) -> str:
+        if subject.endswith(search):
+            return subject[: -len(search)] + replace
+        return subject
+
+    @staticmethod
+    def replace_matches(pattern: str, replace: str | Callable[[re.Match[str]], str], subject: str) -> str:
+        return re.sub(pattern, replace, subject)
+
+    @staticmethod
+    def reverse(value: str) -> str:
+        return value[::-1]
+
+    @staticmethod
+    def slug(title: str, separator: str = "-", language: str | None = None, dictionary: dict[str, str] | None = None) -> str:
+        del language
+        value = Str.ascii(title.lower())
+        for search, repl in (dictionary or {"@": "at"}).items():
+            value = value.replace(search, f" {repl} ")
+        value = re.sub(rf"[^a-z0-9{re.escape(separator)}\s]+", "", value)
+        value = re.sub(r"[\s_]+", separator, value)
+        value = re.sub(rf"{re.escape(separator)}+", separator, value)
+        return value.strip(separator)
+
+    @staticmethod
+    def squish(value: str) -> str:
+        return re.sub(r"\s+", " ", value).strip()
+
+    @staticmethod
+    def substr(value: str, start: int, length: int | None = None) -> str:
+        if length is None:
+            return value[start:]
+        if length >= 0:
+            end = start + length if start >= 0 else len(value) + start + length
+            return value[start:end] if start >= 0 else value[start:end]
+        return value[start : start + length]
+
+    @staticmethod
+    def substr_count(haystack: str, needle: str, offset: int = 0, length: int | None = None) -> int:
+        segment = haystack[offset:] if length is None else haystack[offset : offset + length]
+        return segment.count(needle)
+
+    @staticmethod
+    def substr_replace(value: str, replace: str, offset: int = 0, length: int | None = None) -> str:
+        if length is None:
+            length = len(value)
+        start = offset if offset >= 0 else max(0, len(value) + offset)
+        end = start + length
+        return value[:start] + replace + value[end:]
+
+    @staticmethod
+    def swap(map_: dict[str, str], subject: str) -> str:
+        for search, replace in map_.items():
+            subject = subject.replace(search, replace)
+        return subject
+
+    @staticmethod
+    def take(value: str, limit: int) -> str:
+        if limit < 0:
+            return value[limit:]
+        return value[:limit]
+
+    @staticmethod
+    def to_base64(value: str) -> str:
+        return base64.b64encode(value.encode("utf-8")).decode("ascii")
+
+    @staticmethod
+    def from_base64(value: str) -> str:
+        return base64.b64decode(value.encode("ascii")).decode("utf-8")
+
+    @staticmethod
+    def trim(value: str, characters: str | None = None) -> str:
+        return value.strip() if characters is None else value.strip(characters)
+
+    @staticmethod
+    def ltrim(value: str, characters: str | None = None) -> str:
+        return value.lstrip() if characters is None else value.lstrip(characters)
+
+    @staticmethod
+    def rtrim(value: str, characters: str | None = None) -> str:
+        return value.rstrip() if characters is None else value.rstrip(characters)
+
+    @staticmethod
+    def wrap(value: str, before: str, after: str | None = None) -> str:
+        return f"{before}{value}{after if after is not None else before}"
+
+    @staticmethod
+    def unwrap(value: str, before: str, after: str | None = None) -> str:
+        after = before if after is None else after
+        if value.startswith(before) and value.endswith(after):
+            return value[len(before) : len(value) - len(after) if after else None]
+        return value
+
+    @staticmethod
+    def word_count(value: str) -> int:
+        return len(value.split())
+
+    @staticmethod
+    def word_wrap(value: str, characters: int = 75, break_str: str = "\n", cut: bool = False) -> str:
+        del cut
+        return re.sub(rf"(.{{{characters}}})", rf"\1{break_str}", value)
+
+    @staticmethod
+    def uuid() -> str:
+        return str(uuid.uuid4())
+
+    @staticmethod
+    def ordered_uuid() -> str:
+        return str(uuid.uuid1())
+
+    @staticmethod
+    def ulid() -> str:
+        # Crockford Base32 ULID (26 chars) — timestamp + randomness.
+        alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+        import time as time_mod
+
+        ts = int(time_mod.time() * 1000)
+        chars = ["0"] * 26
+        for i in range(9, -1, -1):
+            chars[i] = alphabet[ts & 31]
+            ts >>= 5
+        for i in range(10, 26):
+            chars[i] = alphabet[secrets.randbelow(32)]
+        return "".join(chars)
+
+    @staticmethod
+    def markdown(value: str, *, options: dict[str, Any] | None = None) -> str:
+        del options
+        from avalon.mail.markdown import render_markdown_component
+
+        return render_markdown_component(value)
+
+    @staticmethod
+    def inline_markdown(value: str, *, options: dict[str, Any] | None = None) -> str:
+        del options
+        escaped = (
+            value.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        )
+        escaped = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", escaped)
+        escaped = re.sub(r"\*(.+?)\*", r"<em>\1</em>", escaped)
+        escaped = re.sub(r"`(.+?)`", r"<code>\1</code>", escaped)
+        escaped = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r'<a href="\2">\1</a>', escaped)
+        return escaped
+
+
+class Stringable:
+    """Fluent wrapper around ``Str`` methods (Laravel ``Stringable``)."""
+
+    def __init__(self, value: Any = "") -> None:
+        self._value = "" if value is None else str(value)
+
+    def __str__(self) -> str:
+        return self._value
+
+    def __repr__(self) -> str:
+        return f"Stringable({self._value!r})"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Stringable):
+            return self._value == other._value
+        return self._value == other
+
+    def value(self) -> str:
+        return self._value
+
+    def to_string(self) -> str:
+        return self._value
+
+    def exactly(self, value: Any) -> bool:
+        return self._value == str(value)
+
+    def append(self, *values: str) -> Self:
+        self._value += "".join(values)
+        return self
+
+    def prepend(self, *values: str) -> Self:
+        self._value = "".join(values) + self._value
+        return self
+
+    def explode(self, delimiter: str) -> list[str]:
+        return self._value.split(delimiter)
+
+    def basename(self, suffix: str = "") -> Self:
+        from pathlib import Path
+
+        name = Path(self._value).name
+        if suffix and name.endswith(suffix):
+            name = name[: -len(suffix)]
+        self._value = name
+        return self
+
+    def dirname(self, levels: int = 1) -> Self:
+        from pathlib import Path
+
+        path = Path(self._value)
+        for _ in range(max(1, levels)):
+            path = path.parent
+        self._value = str(path)
+        return self
+
+    def class_basename(self) -> Self:
+        from avalon.support.helpers import class_basename
+
+        self._value = class_basename(self._value)
+        return self
+
+    def when(self, condition: Any, callback: Callable[[Self], Any], default: Callable[[Self], Any] | None = None) -> Self:
+        if condition:
+            callback(self)
+        elif default is not None:
+            default(self)
+        return self
+
+    def unless(self, condition: Any, callback: Callable[[Self], Any], default: Callable[[Self], Any] | None = None) -> Self:
+        return self.when(not condition, callback, default)
+
+    def pipe(self, callback: Callable[[Self], Any]) -> Any:
+        return callback(self)
+
+    def tap(self, callback: Callable[[Self], Any]) -> Self:
+        callback(self)
+        return self
+
+    def is_empty(self) -> bool:
+        return self._value == ""
+
+    def is_not_empty(self) -> bool:
+        return not self.is_empty()
+
+    def to_integer(self) -> int:
+        return int(self._value)
+
+    def to_float(self) -> float:
+        return float(self._value)
+
+    def to_boolean(self) -> bool:
+        return self._value.lower() in {"1", "true", "yes", "on"}
+
+    def replace(
+        self,
+        search: str | Iterable[str],
+        replace: str | Iterable[str],
+        *,
+        case_sensitive: bool = True,
+    ) -> Self:
+        self._value = Str.replace(search, replace, self._value, case_sensitive=case_sensitive)
+        return self
+
+    def remove(self, search: str | Iterable[str], *, case_sensitive: bool = True) -> Self:
+        self._value = Str.remove(search, self._value, case_sensitive=case_sensitive)
+        return self
+
+    def replace_array(self, search: str, replace: Sequence[str]) -> Self:
+        self._value = Str.replace_array(search, replace, self._value)
+        return self
+
+    def replace_first(self, search: str, replace: str) -> Self:
+        self._value = Str.replace_first(search, replace, self._value)
+        return self
+
+    def replace_last(self, search: str, replace: str) -> Self:
+        self._value = Str.replace_last(search, replace, self._value)
+        return self
+
+    def replace_start(self, search: str, replace: str) -> Self:
+        self._value = Str.replace_start(search, replace, self._value)
+        return self
+
+    def replace_end(self, search: str, replace: str) -> Self:
+        self._value = Str.replace_end(search, replace, self._value)
+        return self
+
+    def replace_matches(self, pattern: str, replace: str | Callable[[Any], str]) -> Self:
+        self._value = Str.replace_matches(pattern, replace, self._value)
+        return self
+
+    def swap(self, map_: dict[str, str]) -> Self:
+        self._value = Str.swap(map_, self._value)
+        return self
+
+    def is_(self, pattern: str | Iterable[str]) -> bool:
+        return Str.is_(pattern, self._value)
+
+    def contains(self, needles: str | Iterable[str], ignore_case: bool = False) -> bool:
+        return Str.contains(self._value, needles, ignore_case=ignore_case)
+
+    def contains_all(self, needles: Iterable[str], ignore_case: bool = False) -> bool:
+        return Str.contains_all(self._value, needles, ignore_case=ignore_case)
+
+    def doesnt_contain(self, needles: str | Iterable[str], ignore_case: bool = False) -> bool:
+        return Str.doesnt_contain(self._value, needles, ignore_case=ignore_case)
+
+    def starts_with(self, needles: str | Iterable[str]) -> bool:
+        return Str.starts_with(self._value, needles)
+
+    def ends_with(self, needles: str | Iterable[str]) -> bool:
+        return Str.ends_with(self._value, needles)
+
+    def dd(self) -> None:  # pragma: no cover - debug helper
+        from avalon.debug import dd
+
+        dd(self._value)
+
+    def dump(self) -> Self:  # pragma: no cover - debug helper
+        from avalon.debug import dump
+
+        dump(self._value)
+        return self
+
+
+def _proxy(name: str) -> Callable[..., Any]:
+    str_method = getattr(Str, name)
+
+    def method(self: Stringable, *args: Any, **kwargs: Any) -> Any:
+        import inspect
+
+        try:
+            params = list(inspect.signature(str_method).parameters)
+        except (TypeError, ValueError):  # pragma: no cover
+            params = []
+        subject_first = bool(params) and params[0] in {
+            "value",
+            "subject",
+            "haystack",
+            "title",
+            "text",
+            "array",
+        }
+        if subject_first:
+            result = str_method(self._value, *args, **kwargs)
+        elif not params:  # pragma: no cover
+            result = str_method()
+        else:  # pragma: no cover
+            result = str_method(*args, **kwargs)
+        if isinstance(result, str):
+            self._value = result
+            return self
+        return result  # pragma: no cover
+
+    method.__name__ = name
+    return method
+
+
+for _name in (
+    "after",
+    "after_last",
+    "apa",
+    "ascii",
+    "before",
+    "before_last",
+    "between",
+    "between_first",
+    "camel",
+    "char_at",
+    "chop_end",
+    "chop_start",
+    "deduplicate",
+    "excerpt",
+    "finish",
+    "headline",
+    "inline_markdown",
+    "is_ascii",
+    "is_json",
+    "is_ulid",
+    "is_url",
+    "is_uuid",
+    "kebab",
+    "lcfirst",
+    "length",
+    "limit",
+    "lower",
+    "ltrim",
+    "markdown",
+    "mask",
+    "pad_both",
+    "pad_left",
+    "pad_right",
+    "plural",
+    "plural_studly",
+    "position",
+    "repeat",
+    "reverse",
+    "rtrim",
+    "singular",
+    "slug",
+    "snake",
+    "squish",
+    "start",
+    "studly",
+    "substr",
+    "substr_count",
+    "substr_replace",
+    "take",
+    "title",
+    "to_base64",
+    "transliterate",
+    "trim",
+    "ucfirst",
+    "ucsplit",
+    "unwrap",
+    "upper",
+    "word_count",
+    "word_wrap",
+    "words",
+    "wrap",
+):
+    if not hasattr(Stringable, _name):
+        setattr(Stringable, _name, _proxy(_name))
+
+
+def str_(value: Any = "") -> Stringable:
+    """Laravel ``str()`` helper."""
+    return Str.of(value)
+
+
+def _match_case(source: str, target: str) -> str:
+    if source.isupper():
+        return target.upper()
+    if source[:1].isupper():
+        return target[:1].upper() + target[1:]
+    return target
+
+
+# CamelCase aliases for Laravel method names.
+Str.afterLast = Str.after_last  # type: ignore[attr-defined]
+Str.beforeLast = Str.before_last  # type: ignore[attr-defined]
+Str.betweenFirst = Str.between_first  # type: ignore[attr-defined]
+Str.charAt = Str.char_at  # type: ignore[attr-defined]
+Str.chopStart = Str.chop_start  # type: ignore[attr-defined]
+Str.chopEnd = Str.chop_end  # type: ignore[attr-defined]
+Str.containsAll = Str.contains_all  # type: ignore[attr-defined]
+Str.doesntContain = Str.doesnt_contain  # type: ignore[attr-defined]
+Str.endsWith = Str.ends_with  # type: ignore[attr-defined]
+Str.startsWith = Str.starts_with  # type: ignore[attr-defined]
+Str.isAscii = Str.is_ascii  # type: ignore[attr-defined]
+Str.isJson = Str.is_json  # type: ignore[attr-defined]
+Str.isUrl = Str.is_url  # type: ignore[attr-defined]
+Str.isUlid = Str.is_ulid  # type: ignore[attr-defined]
+Str.isUuid = Str.is_uuid  # type: ignore[attr-defined]
+Str.orderedUuid = Str.ordered_uuid  # type: ignore[attr-defined]
+Str.padBoth = Str.pad_both  # type: ignore[attr-defined]
+Str.padLeft = Str.pad_left  # type: ignore[attr-defined]
+Str.padRight = Str.pad_right  # type: ignore[attr-defined]
+Str.pluralStudly = Str.plural_studly  # type: ignore[attr-defined]
+Str.replaceArray = Str.replace_array  # type: ignore[attr-defined]
+Str.replaceFirst = Str.replace_first  # type: ignore[attr-defined]
+Str.replaceLast = Str.replace_last  # type: ignore[attr-defined]
+Str.replaceMatches = Str.replace_matches  # type: ignore[attr-defined]
+Str.replaceStart = Str.replace_start  # type: ignore[attr-defined]
+Str.replaceEnd = Str.replace_end  # type: ignore[attr-defined]
+Str.substrCount = Str.substr_count  # type: ignore[attr-defined]
+Str.substrReplace = Str.substr_replace  # type: ignore[attr-defined]
+Str.toBase64 = Str.to_base64  # type: ignore[attr-defined]
+Str.fromBase64 = Str.from_base64  # type: ignore[attr-defined]
+Str.wordCount = Str.word_count  # type: ignore[attr-defined]
+Str.wordWrap = Str.word_wrap  # type: ignore[attr-defined]
+Str.inlineMarkdown = Str.inline_markdown  # type: ignore[attr-defined]
+# ``is`` is reserved in Python — expose Laravel name via getattr-friendly alias.
+setattr(Str, "is", Str.is_)

@@ -99,10 +99,33 @@ Route.get("/api/me", ..., middleware=["auth:api"])
 | `guest` | Redirect if already authenticated |
 | `password.confirm` | Require recent password confirmation |
 | `auth.basic` | HTTP Basic (`email` + password by default) |
+| `verified` | Require `has_verified_email()` (MustVerifyEmail) |
 
 Unauthenticated JSON/API clients receive **401**; browser `web` routes redirect
 to `/login`. Unknown bearer tokens do **not** invent a guest identity — only a
 provider hit authenticates the `api` guard.
+
+## Email verification
+
+```python
+# app/models/user.py
+from avalon.auth import AuthenticatableMixin
+from avalon.notifications import MustVerifyEmail, Notifiable
+from avalon.orm import Model
+
+class User(AuthenticatableMixin, Notifiable, MustVerifyEmail, Model):
+    fillable = ("email", "name", "password", "email_verified_at")
+```
+
+```python
+await user.send_email_verification_notification()
+await user.mark_email_as_verified()
+user.has_verified_email()
+```
+
+Protect routes with `middleware=["auth", "verified"]`. Password-reset delivery
+uses `ResetPasswordNotification` by default — see [Notifications](/notifications/)
+and [Passwords](/passwords/).
 
 ## viaRequest
 
@@ -118,10 +141,11 @@ auth().via_request("custom", lambda request: lookup(request))
 ```python
 # app/models/user.py
 from avalon.auth import AuthenticatableMixin
+from avalon.notifications import MustVerifyEmail, Notifiable
 from avalon.orm import Model
 
-class User(AuthenticatableMixin, Model):
-    fillable = ("email", "name", "password", "remember_token", "api_token")
+class User(AuthenticatableMixin, Notifiable, MustVerifyEmail, Model):
+    fillable = ("email", "name", "password", "remember_token", "api_token", "email_verified_at")
     hidden = ("password", "remember_token")
 ```
 
@@ -129,5 +153,7 @@ class User(AuthenticatableMixin, Model):
 
 - [Hashing](/hashing/)
 - [Passwords](/passwords/)
+- [Notifications](/notifications/)
+- [Mail](/mail/)
 - [Session](/session/)
 - [CSRF Protection](/csrf/)

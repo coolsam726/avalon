@@ -387,6 +387,112 @@ def lang_missing(
     raise typer.Exit(code=1)
 
 
+@app.command("make:command")
+def make_command(
+    name: str = typer.Argument(..., help="Class name, e.g. SendEmails"),
+    force: bool = typer.Option(False, "--force", help="Overwrite an existing file"),
+) -> None:
+    """Create a console command in app/console/commands."""
+    _generate("command", name, force)
+
+
+@app.command("list")
+def list_commands() -> None:
+    """List Grail commands and discovered Avalon Command classes."""
+    typer.echo("Grail commands:")
+    for cmd in sorted(app.registered_commands, key=lambda c: c.name or ""):
+        if getattr(cmd, "hidden", False):
+            continue
+        help_text = (cmd.help or "").split("\n")[0]
+        typer.echo(f"  {(cmd.name or ''):<22} {help_text}")
+    try:
+        from avalon.console.kernel import ConsoleKernel
+
+        kernel = ConsoleKernel.from_cwd()
+        if kernel.commands:
+            typer.echo("\nDiscovered Command classes:")
+            for name, cls in sorted(kernel.commands.items()):
+                if cls.hidden:
+                    continue
+                typer.echo(f"  {name:<22} {cls.description}")
+    except Exception as exc:
+        typer.secho(f"(command discovery skipped: {exc})", fg=typer.colors.YELLOW)
+
+
+@app.command("schedule:run")
+def schedule_run() -> None:
+    """Run due scheduled events once (for cron)."""
+    from avalon.console.kernel import ConsoleKernel
+    from avalon.console.scheduling import run_event, schedule
+
+    kernel = ConsoleKernel.from_cwd()
+    kernel.load_console_routes()
+    due = schedule.due_events()
+    if not due:
+        typer.echo("No scheduled events are ready.")
+        return
+
+    def runner(command_name: str) -> int:
+        parts = command_name.split()
+        return kernel.run_argv(parts[0], parts[1:])
+
+    for event in due:
+        typer.echo(f"Running: {event.description}")
+        run_event(event, base_path=kernel.app.base_path, runner=runner)
+
+
+@app.command("schedule:work")
+def schedule_work(
+    sleep: int = typer.Option(60, "--sleep", help="Seconds between ticks"),
+) -> None:
+    """Long-running scheduler ticker."""
+    import time
+
+    from avalon.console.kernel import ConsoleKernel
+    from avalon.console.scheduling import run_event, schedule
+
+    kernel = ConsoleKernel.from_cwd()
+    kernel.load_console_routes()
+    typer.echo("Schedule worker started. Press Ctrl-C to stop.")
+
+    def runner(command_name: str) -> int:
+        parts = command_name.split()
+        return kernel.run_argv(parts[0], parts[1:])
+
+    try:
+        while True:
+            for event in schedule.due_events():
+                typer.echo(f"Running: {event.description}")
+                run_event(event, base_path=kernel.app.base_path, runner=runner)
+            time.sleep(max(1, sleep))
+    except KeyboardInterrupt:
+        typer.echo("Schedule worker stopped.")
+
+
+@app.command("fiddle")
+def fiddle() -> None:
+    """Interactive Avalon REPL (Laravel Tinker-class)."""
+    from avalon.console.kernel import ConsoleKernel
+    from avalon.console.repl import start_fiddle
+
+    kernel = ConsoleKernel.from_cwd()
+    raise typer.Exit(code=start_fiddle(kernel.app))
+
+
+def _register_discovered_commands() -> None:
+    if not (Path.cwd() / "bootstrap" / "app.py").is_file():
+        return
+    try:
+        from avalon.console.kernel import ConsoleKernel
+
+        ConsoleKernel.from_cwd().register_on_typer(app)
+    except Exception:
+        return
+
+
+_register_discovered_commands()
+
+
 @app.command("serve")
 def serve(
     host: str = typer.Option(DEFAULT_HOST, help="Bind host"),

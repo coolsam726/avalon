@@ -73,6 +73,8 @@ _TAG_RE = re.compile(
     rf"|@auth\b"
     rf"|@endguest\b"
     rf"|@guest\b"
+    rf"|@dump\b"
+    rf"|@dd\b"
     rf"|@asset\b"
     rf"|@endcache\b"
     rf"|@cache\b",
@@ -105,7 +107,7 @@ _BALANCED_ALWAYS = frozenset(
     }
 )
 # Balanced only when the next non-space character is ``(``.
-_BALANCED_IF_PAREN = frozenset({"@empty", "@csrf", "@error"})
+_BALANCED_IF_PAREN = frozenset({"@empty", "@csrf", "@error", "@dump", "@dd"})
 
 
 class _TagMatch:
@@ -378,6 +380,8 @@ def _tag_kind(
         ("@auth", "auth"),
         ("@endguest", "endguest"),
         ("@guest", "guest"),
+        ("@dump", "dump"),
+        ("@dd", "dd"),
         ("@asset", "asset"),
         ("@endcache", "endcache"),
         ("@cache", "cache"),
@@ -863,6 +867,30 @@ def _compile_fragment(
             indent += 1
         elif kind == "endguest":
             indent -= 1
+        elif kind == "dump":
+            args = _paren_inner(match.group(0) or "")
+            emit("from avalon.debug import render_dump_html as __dump_html")
+            if args.strip():
+                emit(f"__dump_raw = __eval({_py_str(f'({args})')})")
+                emit(
+                    "__dump_vals = __dump_raw if isinstance(__dump_raw, tuple) "
+                    "else (__dump_raw,)"
+                )
+            else:
+                emit("__dump_vals = ()")
+            emit(f"__w(__dump_html(__dump_vals, source={_py_str(name)}))")
+        elif kind == "dd":
+            args = _paren_inner(match.group(0) or "")
+            emit("from avalon.debug import dd as __avalon_dd")
+            if args.strip():
+                emit(f"__dd_raw = __eval({_py_str(f'({args})')})")
+                emit(
+                    "__dd_vals = __dd_raw if isinstance(__dd_raw, tuple) "
+                    "else (__dd_raw,)"
+                )
+                emit("__avalon_dd(*__dd_vals)")
+            else:
+                emit("__avalon_dd()")
         elif kind == "asset":
             args = _paren_inner(match.group(0) or "")
             emit(f"__w(__e(str(__eval({_py_str(f'asset({args})')}))))")

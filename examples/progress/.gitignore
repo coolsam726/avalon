@@ -8,6 +8,8 @@ venv/
 .mypy_cache/
 .caliburn_cache/
 storage/framework/views/
+storage/framework/schedule/
+storage/framework/schedule-heartbeat.txt
 database/*.sqlite
 database/*.sqlite-*
 *.egg-info/

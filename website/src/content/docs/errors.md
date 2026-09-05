@@ -73,6 +73,10 @@ Bundles: `default` (plain CSS), `tailwind`, `bootstrap`. `avalon new` ships the 
 
 Validation uses `ValidationException` (422 with `errors`). Default production copy lives in `lang/en/errors.py` (`errors.not_found`, …). Conversion still happens **inside** the middleware pipeline so route middleware can decorate error responses.
 
+## `dump()` / `dd()`
+
+Intentional debug halts use `from avalon import dump, dd` — not application errors. The Handler skips reporting `DumpAndDie` and renders a dedicated dump page (web HTML or api JSON) with status **200**. See [Artisan Console](/console/#dump--dd).
+
 ## Related
 
 - [Logging](/logging/)

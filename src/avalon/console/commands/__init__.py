@@ -1,0 +1,1 @@
+"""Framework console command package."""
