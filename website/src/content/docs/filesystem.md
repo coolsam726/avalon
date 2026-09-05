@@ -35,5 +35,6 @@ await Storage.disk("public").put_file_async("uploads", request.file("avatar"))
 
 ## Related
 
+- [Cache](/cache/) — file cache under `storage/framework/cache`
 - [Mail](/mail/) — attachments from Storage disks
 - [Queues](/queues/) — job artifacts

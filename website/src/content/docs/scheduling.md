@@ -31,7 +31,10 @@ Fresh apps from `avalon new` ship a commented stub.
 | `daily()` | `0 0 * * *` |
 | `cron("…")` | custom 5-field expression |
 
-Filters: `weekdays()`, `weekends()`. Overlap control: `withoutOverlapping()` / `without_overlapping_lock()` — filesystem mutex under `storage/framework/schedule/`.
+Filters: `weekdays()`, `weekends()`. Overlap control: `withoutOverlapping()` /
+`without_overlapping_lock()` — prefers **cache locks** when the Cache manager is
+booted (`Cache.lock("schedule:…")`), otherwise a filesystem mutex under
+`storage/framework/schedule/`. See [Cache](/cache/).
 
 ## Running the schedule
 
@@ -48,4 +51,5 @@ Due events print `Running: …`. Callbacks run in-process; command events invoke
 ## Related
 
 - [Artisan Console](/console/)
+- [Cache](/cache/) — preferred overlap locks
 - [Error Handling](/errors/)
