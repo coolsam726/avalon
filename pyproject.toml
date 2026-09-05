@@ -49,6 +49,7 @@ caliburn = []
 # Tinker-class REPL (`grail fiddle` / `tinker` / `repl`) — colors, completion, pretty repr.
 fiddle = ["ipython>=8.18"]
 s3 = ["boto3>=1.34"]
+redis = ["redis>=5"]
 
 [project.scripts]
 avalon = "avalon.installer.cli:app"

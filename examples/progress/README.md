@@ -160,11 +160,12 @@ curl -s "$BASE/api/posts/1/comments" | python -m json.tool
 | **M11–M13** | `grail progress:demo` — queue job, WelcomeMail, reset/verify notifications |
 | **M14** | `grail progress:helpers` — Arr / Str / Number |
 | **M15** | `grail progress:cache` — Cache façade, remember, locks |
-| **M16–M29** | Roadmap on `/progress` (Redis → packages); see `docs/PLAN.md` |
+| **M16** | `grail progress:redis` — Redis façade / cache store (skips if Redis down) |
+| **M17–M29** | Roadmap on `/progress`; see `docs/PLAN.md` |
 
 ## Growing with Avalon
 
-M0–M15 are closed. Next is **M16 — Redis**. The board lists the full **M0–M29** roadmap (encryption, events, authorization, HTTP client, processes, concurrency, API resources, factories, NoSQL, broadcasting, search, testing, packages). Deferred “Later” items stay in `docs/PLAN.md`.
+M0–M16 are closed. Next is **M17 — Encryption**. The board lists the full **M0–M29** roadmap.
 ## CLI
 
 ```bash
@@ -175,6 +176,7 @@ grail progress:prompts
 grail progress:demo
 grail progress:helpers
 grail progress:cache
+grail progress:redis
 grail storage:link
 grail schedule:run
 grail fiddle          # aliases: tinker, repl

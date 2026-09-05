@@ -12,6 +12,11 @@ config = {
             "queue": "default",
             "retry_after": 90,
         },
+        "redis": {
+            "driver": "redis",
+            "connection": env("REDIS_QUEUE_CONNECTION", "default"),
+            "queue": "queues",
+        },
     },
     "failed": {
         "driver": "database",

@@ -65,6 +65,7 @@ def scaffold_app(name: str, destination: Path | None = None) -> Path:
         "config/mail.py": _config_mail(),
         "config/notifications.py": _config_notifications(),
         "config/cache.py": _config_cache(),
+        "config/redis.py": _config_redis(),
         "app/models/__init__.py": "",
         "app/console/__init__.py": "",
         "app/console/commands/__init__.py": "",
@@ -170,6 +171,13 @@ DB_CONNECTION=sqlite
 DB_DATABASE=database/database.sqlite
 CACHE_STORE=file
 CACHE_PREFIX=avalon_cache_
+REDIS_CLIENT=default
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+REDIS_DB=0
+REDIS_PASSWORD=
+# REDIS_URL=redis://127.0.0.1:6379/0
+SESSION_DRIVER=cookie
 """
 
 
@@ -371,6 +379,9 @@ config = {
     "cookie": env("SESSION_COOKIE", "avalon_session"),
     "path": env("SESSION_PATH", "/"),
     "secure": env("SESSION_SECURE_COOKIE", False),
+    # Redis driver (SESSION_DRIVER=redis):
+    "connection": env("SESSION_CONNECTION", "default"),
+    "prefix": env("SESSION_PREFIX", "avalon_session:"),
 }
 '''
 
@@ -585,6 +596,11 @@ config = {
             "queue": "default",
             "retry_after": 90,
         },
+        "redis": {
+            "driver": "redis",
+            "connection": env("REDIS_QUEUE_CONNECTION", "default"),
+            "queue": "queues",
+        },
     },
     "failed": {
         "driver": "database",
@@ -656,7 +672,32 @@ config = {
             "table": "cache",
             "lock_table": "cache_locks",
         },
+        "redis": {
+            "driver": "redis",
+            "connection": env("REDIS_CACHE_CONNECTION", "default"),
+        },
         "null": {"driver": "null"},
+    },
+}
+'''
+
+
+def _config_redis() -> str:
+    return '''"""Redis connections."""
+
+from avalon.config import env
+
+config = {
+    "default": env("REDIS_CLIENT", "default"),
+    "connections": {
+        "default": {
+            "url": env("REDIS_URL"),
+            "host": env("REDIS_HOST", "127.0.0.1"),
+            "port": int(env("REDIS_PORT", 6379) or 6379),
+            "database": int(env("REDIS_DB", 0) or 0),
+            "password": env("REDIS_PASSWORD"),
+            "username": env("REDIS_USERNAME"),
+        },
     },
 }
 '''

@@ -60,5 +60,9 @@ def default_cache_config(base_path: str | Any = ".") -> dict[str, Any]:
                 "lock_table": "cache_locks",
             },
             "null": {"driver": "null"},
+            "redis": {
+                "driver": "redis",
+                "connection": "default",
+            },
         },
     }

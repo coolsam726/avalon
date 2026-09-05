@@ -320,7 +320,7 @@ Laravel’s Digging Deeper / Security / Packages clusters map onto Avalon as fol
 | Helpers | `helpers` | **M14** | Shipped |
 | Strings | `strings` | **M14** | Shipped |
 | Cache | `cache` | **M15** | Shipped |
-| Redis | `redis` | **M16** | Write when Redis drivers ship |
+| Redis | `redis` | **Done (M16)** | Redis page + Cache/Session/Queues updates |
 | Encryption | `encryption` | **M17** | Write when Crypt façade ships (cookie encrypt already in M7) |
 | Events | `events` | **M18** | Write when app event dispatcher ships (model events already in Articulate) |
 | Broadcasting | `broadcasting` | **M26** | Write when broadcasting ships |
@@ -998,6 +998,8 @@ Laravel [Redis](https://laravel.com/docs/redis) connection manager and first-par
 
 **Gate:** at least one driver path proven end-to-end (cache or session); docs honest about extras; coverage ≥ 98% on Redis package.
 
+**Status (M16):** Ladder exhausted — `Redis` / `redis()` façade; `config/redis.py`; `avalon[redis]` extra; Redis drivers for **cache** (tags + locks), **session**, and **queue**; Worker generalized beyond database; Starlight Redis; progress `progress:redis`; tests via FakeRedis (no server required in CI).
+
 ### M17 — Encryption (`avalon.encryption`)
 
 Laravel [Encryption](https://laravel.com/docs/encryption) — app-facing `Crypt` beyond cookie middleware.
@@ -1193,6 +1195,6 @@ Laravel [Package Development](https://laravel.com/docs/packages) guidelines for 
 
 ## Next implementation focus
 
-**M15 cache gate met** — Cache stores + locks exhausted (see M15 status). **Next: M16** Redis when ready. Roadmap continues **M16–M29** (Redis → encryption → events → authorization → HTTP client/processes/concurrency → API resources → factories → **Articulate NoSQL** → broadcasting → search → testing → packages).
+**M16 Redis gate met** — connections + cache/session/queue drivers exhausted (see M16 status). **Next: M17** Encryption when ready. Roadmap continues **M17–M29**.
 
-**Docs (anytime):** Localization page (M4 code done); Mutators & Casts Articulate how-to (M5 code done). Error Handling / Logging / Artisan Console / Task Scheduling how-tos published.
+**Docs (anytime):** Localization page (M4 code done); Mutators & Casts Articulate how-to (M5 code done).

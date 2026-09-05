@@ -168,13 +168,17 @@ def _milestones() -> list[dict]:
         {
             "id": "M16",
             "name": "Redis",
-            "status": "next",
-            "proof": ["Redis connections", "session / cache / queue drivers"],
+            "status": "complete",
+            "proof": [
+                "Redis / redis() façade",
+                "cache + session + queue drivers",
+                "progress:redis",
+            ],
         },
         {
             "id": "M17",
             "name": "Encryption",
-            "status": "planned",
+            "status": "next",
             "proof": ["Crypt façade", "APP_KEY serialize-aware encrypt"],
         },
         {

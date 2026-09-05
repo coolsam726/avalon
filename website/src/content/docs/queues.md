@@ -30,8 +30,20 @@ Jobs without `ShouldQueue` (and without `queue = True`) run synchronously. Use `
 | --- | --- | --- |
 | `sync` | Immediate | Default for tests/dev |
 | `database` | `jobs` / `failed_jobs` tables | Call `ensure_tables()` or migrate |
+| `redis` | Redis lists + delayed ZSET | Requires `avalon[redis]`; see [Redis](/redis/) |
 
-Redis queue driver lands in **M16**.
+```python
+# config/queue.py
+"redis": {
+    "driver": "redis",
+    "connection": "default",
+    "queue": "queues",
+},
+```
+
+```env
+QUEUE_CONNECTION=redis
+```
 
 ## Workers
 

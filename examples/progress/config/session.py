@@ -8,4 +8,6 @@ config = {
     "cookie": env("SESSION_COOKIE", "avalon_session"),
     "path": env("SESSION_PATH", "/"),
     "secure": env("SESSION_SECURE_COOKIE", False),
+    "connection": env("SESSION_CONNECTION", "default"),
+    "prefix": env("SESSION_PREFIX", "avalon_session:"),
 }

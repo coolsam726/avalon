@@ -17,6 +17,10 @@ config = {
             "table": "cache",
             "lock_table": "cache_locks",
         },
+        "redis": {
+            "driver": "redis",
+            "connection": env("REDIS_CACHE_CONNECTION", "default"),
+        },
         "null": {"driver": "null"},
     },
 }

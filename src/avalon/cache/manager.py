@@ -116,6 +116,10 @@ class CacheManager:
                     return True
 
             return NullStore()
+        if driver == "redis":
+            from avalon.cache.drivers.redis import RedisStore
+
+            return RedisStore(connection=cfg.get("connection"))
         raise ValueError(f"Unsupported cache driver: {driver!r}")
 
 

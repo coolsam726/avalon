@@ -9,7 +9,7 @@ from avalon.queue.connections.sync import SyncQueue
 
 
 class QueueManager:
-    """Laravel ``Queue`` manager."""
+    """Queue connection manager."""
 
     def __init__(self, app: Any | None = None, config: dict[str, Any] | None = None) -> None:
         self.app = app
@@ -46,4 +46,8 @@ class QueueManager:
             return SyncQueue(self.app, cfg, manager=self)
         if driver == "database":
             return DatabaseQueue(self.app, cfg, manager=self, connection_name=name)
+        if driver == "redis":
+            from avalon.queue.connections.redis import RedisQueue
+
+            return RedisQueue(self.app, cfg, manager=self, connection_name=name)
         raise ValueError(f"Unsupported queue driver: {driver!r}")

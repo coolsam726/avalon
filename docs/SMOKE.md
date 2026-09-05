@@ -431,8 +431,22 @@ pytest -q tests/test_m15_*.py tests/smoke/test_m15_smoke.py
 
 ---
 
+## M16 — Redis
+
+```bash
+pytest -q tests/test_m16_*.py tests/smoke/test_m16_smoke.py
+```
+
+### M16 exit criteria
+
+- [x] `Redis` façade + `config/redis.py` + `avalon[redis]`
+- [x] Cache / session / queue Redis drivers (FakeRedis in CI)
+- [x] Docs + smoke; no M17 until green
+
+---
+
 ## Out of scope until later milestones
 
-- Digging Deeper: Redis, encryption, events, authorization, HTTP client, processes, concurrency, API resources, factories, **Articulate NoSQL (M25)**, broadcasting, search, testing toolkit, package guidelines (M16–M29)
+- Digging Deeper: encryption, events, authorization, HTTP client, processes, concurrency, API resources, factories, **Articulate NoSQL (M25)**, broadcasting, search, testing toolkit, package guidelines (M17–M29)
 - Localization + Mutators/Casts **docs** (code already shipped M4/M5)
 - Additional NoSQL engines beyond Mongo, and other Later extras — see [`PLAN.md`](PLAN.md)

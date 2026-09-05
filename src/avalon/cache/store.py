@@ -153,16 +153,16 @@ class Repository:
         if not getattr(self.store, "supports_tags", False):
             raise RuntimeError(
                 "Cache tags are not supported by this store. "
-                "Use the array store (tests) or Redis (M16)."
+                "Use the array or redis store."
             )
         return TaggedCache(self, list(names))
 
 
 class TaggedCache:
-    """Tagged cache for taggable stores (array today; Redis in M16).
+    """Tagged cache for taggable stores (array / redis).
 
     Keys are namespaced by the sorted tag set; ``flush()`` clears that set.
-    Not available on file / database (Laravel-honest).
+    Not available on file / database.
     """
 
     def __init__(self, repository: Repository, names: list[str]) -> None:
