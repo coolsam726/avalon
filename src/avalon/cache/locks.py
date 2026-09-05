@@ -57,7 +57,7 @@ class CacheLock:
                 return True if callback is None else result
             if time.monotonic() >= deadline:
                 raise LockTimeoutError(f"Unable to acquire lock [{self.name}]")
-            time.sleep(0.05)  # pragma: no cover
+            time.sleep(0.05)
 
     def release(self) -> bool:
         current = self.repository.get(self._key)
@@ -116,7 +116,7 @@ class FileLock:
                 return True if callback is None else result
             if time.monotonic() >= deadline:
                 raise LockTimeoutError(f"Unable to acquire lock [{self.name}]")
-            time.sleep(0.05)  # pragma: no cover
+            time.sleep(0.05)
 
     def release(self) -> bool:
         path = self._path
@@ -251,7 +251,7 @@ class DatabaseLock:
                 return True if callback is None else result
             if time.monotonic() >= deadline:
                 raise LockTimeoutError(f"Unable to acquire lock [{self.name}]")
-            time.sleep(0.05)  # pragma: no cover
+            time.sleep(0.05)
 
     def release(self) -> bool:
         return bool(self._run(self._arelease()))

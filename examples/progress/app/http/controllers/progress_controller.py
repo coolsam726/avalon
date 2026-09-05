@@ -117,7 +117,7 @@ def _milestones() -> list[dict]:
                 "schedule:run / schedule:work",
                 "grail fiddle REPL",
                 "Avalon Prompts + dump()/dd()",
-                "progress:demo (M11–M13)",
+                "progress:hello · progress:prompts",
             ],
         },
         {
@@ -130,7 +130,7 @@ def _milestones() -> list[dict]:
             "id": "M11",
             "name": "Queues + workers",
             "status": "complete",
-            "proof": ["Job dispatch", "queue:work", "failed jobs"],
+            "proof": ["Job dispatch", "queue:work", "failed jobs", "progress:demo"],
         },
         {
             "id": "M12",
@@ -147,8 +147,107 @@ def _milestones() -> list[dict]:
         {
             "id": "M14",
             "name": "Helpers + Strings",
+            "status": "complete",
+            "proof": [
+                "Arr / Number / data_* helpers",
+                "Str / Stringable / str_()",
+                "progress:helpers",
+            ],
+        },
+        {
+            "id": "M15",
+            "name": "Cache",
+            "status": "complete",
+            "proof": [
+                "Cache / cache() façade",
+                "array + file + database stores",
+                "atomic locks · array tags",
+                "progress:cache",
+            ],
+        },
+        {
+            "id": "M16",
+            "name": "Redis",
             "status": "next",
-            "proof": ["Helpers catalog", "Str / Stringable"],
+            "proof": ["Redis connections", "session / cache / queue drivers"],
+        },
+        {
+            "id": "M17",
+            "name": "Encryption",
+            "status": "planned",
+            "proof": ["Crypt façade", "APP_KEY serialize-aware encrypt"],
+        },
+        {
+            "id": "M18",
+            "name": "Events",
+            "status": "planned",
+            "proof": ["dispatch / listen / subscribe", "queued listeners"],
+        },
+        {
+            "id": "M19",
+            "name": "Authorization",
+            "status": "planned",
+            "proof": ["Gates / Policies", "@can / @cannot", "make:policy"],
+        },
+        {
+            "id": "M20",
+            "name": "HTTP Client",
+            "status": "planned",
+            "proof": ["Http.get/post façade", "fakes / retry / pool"],
+        },
+        {
+            "id": "M21",
+            "name": "Processes",
+            "status": "planned",
+            "proof": ["Process::run / pool", "subprocess fakes"],
+        },
+        {
+            "id": "M22",
+            "name": "Concurrency",
+            "status": "planned",
+            "proof": ["Concurrency::run", "async / process drivers"],
+        },
+        {
+            "id": "M23",
+            "name": "API Resources",
+            "status": "planned",
+            "proof": ["JsonResource / ResourceCollection", "make:resource"],
+        },
+        {
+            "id": "M24",
+            "name": "Model factories",
+            "status": "planned",
+            "proof": ["Factory base", "states / sequences", "make:factory"],
+        },
+        {
+            "id": "M25",
+            "name": "Articulate NoSQL",
+            "status": "planned",
+            "proof": ["Mongo document models", "multi-store Articulate"],
+        },
+        {
+            "id": "M26",
+            "name": "Broadcasting",
+            "status": "planned",
+            "proof": ["ShouldBroadcast", "channel auth", "Redis / websocket"],
+        },
+        {
+            "id": "M27",
+            "name": "Search",
+            "status": "planned",
+            "proof": ["Searchable models", "Scout-class drivers"],
+        },
+        {
+            "id": "M28",
+            "name": "Testing toolkit",
+            "status": "planned",
+            "proof": ["HTTP / console assertions", "façade fakes"],
+        },
+        {
+            "id": "M29",
+            "name": "Package development",
+            "status": "planned",
+            "proof": ["provider discovery", "publish tags", "package guidelines"],
         },
     ]
 
