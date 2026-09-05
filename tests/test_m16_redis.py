@@ -45,8 +45,27 @@ def redis_manager(fake_redis: FakeRedis) -> RedisManager:
 
 
 def test_require_redis_imports() -> None:
-    mod = require_redis()
+    try:
+        mod = require_redis()
+    except RuntimeError as exc:
+        assert "avalon[redis]" in str(exc)
+        return
     assert hasattr(mod, "Redis")
+
+
+def test_require_redis_missing_package(monkeypatch: pytest.MonkeyPatch) -> None:
+    import builtins
+
+    real_import = builtins.__import__
+
+    def _import(name: str, *args: Any, **kwargs: Any):
+        if name == "redis" or name.startswith("redis."):
+            raise ImportError("no redis")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", _import)
+    with pytest.raises(RuntimeError, match="avalon\\[redis\\]"):
+        require_redis()
 
 
 def test_redis_facade_get_set_delete_incr_publish(redis_manager: RedisManager, fake_redis: FakeRedis) -> None:

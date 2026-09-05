@@ -36,6 +36,7 @@ dev = [
     "ruff>=0.8.0",
     "argon2-cffi>=23.0",
     "ipython>=8.18",
+    "redis>=5",
 ]
 pgsql = ["asyncpg>=0.29"]
 mysql = ["aiomysql>=0.2"]

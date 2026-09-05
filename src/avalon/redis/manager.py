@@ -52,8 +52,8 @@ class RedisManager:
         return dict(cfg)
 
     def _create_client(self, name: str) -> Any:
-        redis_async = require_redis()
         cfg = self._connection_config(name)
+        redis_async = require_redis()
         url = cfg.get("url")
         if url:
             return redis_async.from_url(str(url), decode_responses=False)
