@@ -276,7 +276,7 @@ Mirror Laravel’s Basics **order and coverage**. Deep Caliburn how-tos stay in 
 | Responses | `responses` | **Shipped (M2)** — `Response`, `html()`, JSON polarity | **Done** |
 | Views | `views` | **Shipped (M6)** — `view()` / `ViewFactory` | **Done** — overview + link to Caliburn |
 | Blade Templates | *(Caliburn section)* | **Shipped (M6)** | **Done** as Caliburn group (not duplicated under Basics) |
-| Asset Bundling | `asset-bundling` | **Partial (M6)** — `asset()` / `@asset` + `public/` on `grail serve`; Vite/Tailwind = **starter kits** | **Done** — honest “no Vite in core” page |
+| Asset Bundling | `asset-bundling` | **Partial (M6)** — `asset()` / `@asset` + `public/` on `grail serve`; default `avalon new` ships **Vite + Tailwind** → `public/build`; Python core stays Node-free; starter kits may replace/extend | **Partial** — default scaffold + docs; full `@vite` helper follow-up |
 | URL Generation | `urls` | **Partial (M3)** — `url()`, `asset()`, `redirect()`; named `route()` = Later | **Done** |
 | Session | `session` | **Shipped (M7 foundation)** — cookie driver, encrypt, flash | **Done** |
 | Authentication | `authentication` | **Shipped (M7)** — guards, remember-me, events, docs | **Done** |
@@ -367,7 +367,7 @@ Match Blade’s mental model end-to-end for app authors:
 3. **Control flow** — `@if` / `@elseif` / `@else` / `@unless` / `@isset` / `@empty` / `@auth` / `@guest` (auth wired when M7 exists; stubs/no-ops until then where needed), `@for` / `@foreach` / `@forelse` / `@while`, `@php` → **`@python` / `@endpython`**
 4. **Components & slots** — class-based and anonymous components, `<x-name>` / `@component`, **slots** (`@slot`, `$slot`, named slots), attribute bags (`$attributes`), `@props`, `@aware`
 5. **Stacks** — `@push` / `@prepend` / `@stack` / `@once`
-6. **Framework directives** — `@csrf`, `@error`, `@lang` / `@choice` / `__()`, `@vite`-class asset helpers as `asset()` / `@asset` (subpath-aware from day one). **No Node/Vite/Tailwind in framework core** — M6 owns URL helpers + `public/` serving for `grail serve`; starter kits own the JS/CSS compile toolchain and emit into `public/` (or `public/build/`)
+6. **Framework directives** — `@csrf`, `@error`, `@lang` / `@choice` / `__()`, `@vite`-class asset helpers as `asset()` / `@asset` (subpath-aware from day one). **No Node dependency in Python core** — M6 owns URL helpers + `public/` serving for `grail serve`. Default `avalon new` (no starter kit) ships **Vite + Tailwind** scaffolding that emits into `public/build/`. Starter kits may replace or extend that toolchain. A first-class Caliburn `@vite` / hot-file helper is a follow-up on top of `asset()`.
 7. **Extensibility** — `Engine.directive(...)` / service-provider registration for **custom `@directive`s**; app-owned Blade-style component libraries under `resources/views/components`
 8. **Tooling** — `view()`, `ViewFactory`, compiled view cache, `grail view:clear` / `view:cache` when the console kernel can host them (M9); until then engine APIs + tests
 
@@ -778,7 +778,7 @@ Full Eloquent parity — see the ORM decision above for the binding ladder. M5 e
 - **Subpath:** asset helpers + smoke under `APP_BASE_PATH`
 - XSS defaults: escaped `{{ }}` vs raw `{!! !!}`
 - **Tooling:** `grail make:component` (anonymous `.cal.html` under `resources/views/components`)
-- **Assets (M6 vs starter kits):** `asset()` / `@asset` + serve `public/` in `grail serve`. Compilation (Vite, esbuild, Tailwind, Alpine, …) lives in **starter kits**, not `avalon.caliburn`. Progress may use plain CSS/JS in `public/` to exercise helpers without a Node toolchain.
+- **Assets:** `asset()` / `@asset` + serve `public/` in `grail serve`. Default scaffold ships Vite + Tailwind (`package.json`, `resources/css|js`, → `public/build`). Progress may keep plain CSS/JS under `public/` for the living demo while still carrying the default Vite tree for scaffold baseline parity. Full `@vite` directive is a follow-up.
 
 **Gate:** ladder exhausted, Caliburn docs section covers shipped surfaces, progress example is Caliburn-first, coverage **100%** on `avalon.caliburn` (statements + branches on the M6 test suite). Real `@csrf` / `@auth` / `@guest` token wiring waits on M7 sessions; `grail view:*` CLI waits on M9 console kernel (engine `cache_views` / `clear_cache` APIs ship now).
 

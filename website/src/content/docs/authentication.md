@@ -3,9 +3,8 @@ title: Authentication
 description: Guards, providers, attempt(), remember-me, events, and protecting routes.
 ---
 
-Avalon authentication mirrors Laravel’s mental model: **guards** decide how a
-request is authenticated, **providers** retrieve users, and `auth()` is the
-request-scoped manager.
+Avalon authentication uses **guards** to decide how a request is authenticated,
+**providers** to retrieve users, and `auth()` as the request-scoped manager.
 
 Session/CSRF for browsers live on the `web` group; the `api` group stays
 stateless and uses the token guard (bearer / `api_token`).
@@ -44,7 +43,7 @@ auth().guest()
 auth().id()
 auth().guard("api").user()
 
-# Laravel $request->user()
+# Same idea via the Request bag
 request.user()
 request.user("api")
 ```

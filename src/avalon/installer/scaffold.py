@@ -88,12 +88,17 @@ def scaffold_app(name: str, destination: Path | None = None) -> Path:
         "resources/views/errors/429.cal.html": _error_view(429, "Too Many Requests"),
         "resources/views/errors/500.cal.html": _error_view(500, "Server Error"),
         "resources/views/errors/503.cal.html": _error_view(503, "Service Unavailable"),
+        "resources/css/app.css": _resources_css(),
+        "resources/js/app.js": _resources_js(),
+        "package.json": _package_json(name),
+        "vite.config.js": _vite_config(),
         "storage/app/.gitkeep": "",
         "storage/app/public/.gitkeep": "",
         "storage/framework/.gitkeep": "",
         "storage/framework/cache/data/.gitkeep": "",
         "storage/logs/.gitkeep": "",
         "public/.gitkeep": "",
+        "public/build/.gitkeep": "",
     }
 
     for relative, content in files.items():
@@ -107,12 +112,18 @@ def scaffold_app(name: str, destination: Path | None = None) -> Path:
 
 
 _GRAIL_SCRIPT = '''#!/usr/bin/env python
-"""Grail — Avalon in-application CLI (Laravel artisan equivalent).
+"""Grail — Avalon in-application CLI.
 
-    python grail version
+With the virtualenv active (Avalon installed):
+
+    grail version
+    grail serve
+    grail list
+    grail fiddle   # aliases: tinker, repl
+
+Or via this root script:
+
     python grail serve
-    python grail list
-    python grail fiddle
 """
 
 from __future__ import annotations
@@ -132,6 +143,9 @@ venv/
 .ruff_cache/
 .mypy_cache/
 .caliburn_cache/
+node_modules/
+public/build/
+!public/build/.gitkeep
 storage/framework/views/
 storage/framework/schedule/
 database/*.sqlite
@@ -154,6 +168,8 @@ APP_LOCALE=en
 APP_FALLBACK_LOCALE=en
 DB_CONNECTION=sqlite
 DB_DATABASE=database/database.sqlite
+CACHE_STORE=file
+CACHE_PREFIX=avalon_cache_
 """
 
 
@@ -168,14 +184,78 @@ Avalon application generated with `avalon new {name}`.
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
-python grail serve
+grail serve
 ```
 
 Open http://127.0.0.1:3000
 
-In-app commands use `python grail …`. Create more apps with `avalon new`.
+With the venv active, run `grail …` directly. `python grail …` also works via the root script.
+
+## Frontend (Vite + Tailwind)
+
+```bash
+npm install
+npm run dev      # Vite HMR during development
+npm run build    # emit into public/build
+```
+
+Create more apps with `avalon new`.
 """
 
+
+def _package_json(name: str) -> str:
+    return f"""{{
+  "name": "{name}",
+  "private": true,
+  "type": "module",
+  "scripts": {{
+    "dev": "vite",
+    "build": "vite build"
+  }},
+  "devDependencies": {{
+    "@tailwindcss/vite": "^4.0.0",
+    "tailwindcss": "^4.0.0",
+    "vite": "^6.0.0"
+  }}
+}}
+"""
+
+
+def _vite_config() -> str:
+    return """import { defineConfig } from "vite";
+import tailwindcss from "@tailwindcss/vite";
+import { resolve } from "node:path";
+
+export default defineConfig({
+  plugins: [tailwindcss()],
+  build: {
+    outDir: "public/build",
+    emptyOutDir: true,
+    manifest: true,
+    rollupOptions: {
+      input: {
+        app: resolve("resources/js/app.js"),
+        css: resolve("resources/css/app.css"),
+      },
+    },
+  },
+  server: {
+    origin: "http://127.0.0.1:5173",
+  },
+});
+"""
+
+
+def _resources_css() -> str:
+    return """@import "tailwindcss";
+"""
+
+
+def _resources_js() -> str:
+    return """import "../css/app.css";
+
+console.log("Avalon app.js ready");
+"""
 
 def _pyproject(name: str, display: str) -> str:
     return f"""[build-system]

@@ -3,7 +3,7 @@ title: Views
 description: Render HTML with Caliburn from controllers and routes.
 ---
 
-Views separate your controller from HTML. Avalon's view engine is **Caliburn** — Blade-parity templates compiled to Python (`.cal.html`).
+Views separate your controller from HTML. Avalon's view engine is **Caliburn** — templates compiled to Python (`.cal.html`).
 
 ## Creating and returning views
 

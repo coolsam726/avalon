@@ -1,10 +1,15 @@
-"""Grail — in-application CLI (Artisan equivalent).
+"""Grail — Avalon in-application CLI.
 
-Preferred usage from an app (or this repo) root::
+Preferred usage with the virtualenv active::
 
-    python grail version
+    grail version
+    grail serve
+    grail make:controller UserController
+    grail fiddle   # aliases: tinker, repl
+
+Or via the root ``grail`` script::
+
     python grail serve
-    python grail make:controller UserController
 
 Project creation uses ``avalon new``, not Grail.
 """
@@ -34,7 +39,7 @@ from avalon.grail.ports import (
 
 app = typer.Typer(
     name="grail",
-    help="Grail — Avalon in-app CLI (Artisan equivalent). Prefer: python grail …",
+    help="Grail — Avalon in-app CLI. Prefer: grail … (or python grail …)",
     no_args_is_help=True,
 )
 
@@ -470,8 +475,10 @@ def schedule_work(
 
 
 @app.command("fiddle")
+@app.command("tinker")
+@app.command("repl")
 def fiddle() -> None:
-    """Interactive Avalon REPL (Laravel Tinker-class)."""
+    """Interactive Avalon REPL (aliases: ``tinker``, ``repl``)."""
     from avalon.console.kernel import ConsoleKernel
     from avalon.console.repl import start_fiddle
 

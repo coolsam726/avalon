@@ -1,6 +1,6 @@
 ---
 title: Collections
-description: Fluent Support collections via collect() — Laravel Illuminate\Support\Collection parity.
+description: Fluent Support collections via collect() — ordered maps with a rich method chain.
 ---
 
 Avalon ships two collection types:
@@ -20,7 +20,7 @@ collect(["", "Ada", None, "Grace"]).filter().values().all()
 
 ## Keys
 
-Like Laravel, collections are ordered maps. Filtering **preserves keys**. Call
+Collections are ordered maps. Filtering **preserves keys**. Call
 `values()` when you want a reindexed list:
 
 ```python
@@ -45,17 +45,17 @@ Collection.unwrap(collect([1]))     # [1]
 Collection.from_json('{"a": 1}')
 ```
 
-## Conversion (Laravel `toArray` / `toJson`)
+## Conversion
 
-Avalon uses Python snake_case. Same ideas as Laravel:
+Avalon uses Python snake_case for conversion helpers:
 
-| Laravel | Avalon | Notes |
-| --- | --- | --- |
-| `all()` | `all()` | Underlying list **or** dict (when keys aren’t `0..n-1`) |
-| `toArray()` | `to_array()` | Alias of `all()` on Support collections |
-| `toJson()` | `to_json(**kwargs)` | `json.dumps` of `to_array()` |
-| — | `to_pretty_json()` | Indented JSON (Laravel-style pretty dump) |
-| `Collection::fromJson` | `Collection.from_json(...)` | Classmethod |
+| Method | Notes |
+| --- | --- |
+| `all()` | Underlying list **or** dict (when keys aren’t `0..n-1`) |
+| `to_array()` | Alias of `all()` on Support collections |
+| `to_json(**kwargs)` | `json.dumps` of `to_array()` |
+| `to_pretty_json()` | Indented JSON |
+| `Collection.from_json(...)` | Classmethod |
 
 ```python
 # app/support_demo.py
@@ -88,20 +88,20 @@ rows.dot()          # flatten nested maps/lists with dotted keys
 
 ## Method surface
 
-Snake_case mirrors Laravel’s Available Methods. Notable renames / notes:
+Methods are snake_case. Notable names and notes:
 
-| Laravel | Avalon |
+| Method | Notes |
 | --- | --- |
-| `toArray` / `toJson` | `to_array` / `to_json` (see Conversion above) |
-| `except` | `except_` / `except_keys` (`except` is reserved) |
-| `toPrettyJson` | `to_pretty_json` |
-| `fromJson` | `from_json` (classmethod) |
-| `reduceSpread` | `reduce_spread` |
-| `diffAssocUsing` / `intersect*` | same snake_case |
-| `dd` / `dump` | skipped (debug theater) |
-| `lazy` / `LazyCollection` | deferred |
+| `to_array` / `to_json` | See Conversion above |
+| `except_` / `except_keys` | `except` is reserved in Python |
+| `to_pretty_json` | Indented JSON dump |
+| `from_json` | Classmethod |
+| `reduce_spread` | Multi-arg reduce over unpacked items |
+| `diff_assoc_using` / `intersect_*` | Same snake_case family |
+| `dd` / `dump` | Skipped (use Avalon dump helpers) |
+| `lazy` / `LazyCollection` | Deferred |
 
-Transformers return **new** instances. Mutators (`push`, `put`, `pop`, `pull`, `transform`, `splice`, …) match Laravel mutability.
+Transformers return **new** instances. Mutators (`push`, `put`, `pop`, `pull`, `transform`, `splice`, …) mutate in place.
 
 ```python
 # app/support_demo.py

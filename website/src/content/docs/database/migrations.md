@@ -8,14 +8,14 @@ Migrations are like version control for your database, allowing your team to def
 ## Generating migrations
 
 ```bash
-python grail make:migration create_flights_table
-python grail make:migration add_slug_to_posts_table
-python grail make:model Post -m          # model + create_posts_table migration
+grail make:migration create_flights_table
+grail make:migration add_slug_to_posts_table
+grail make:model Post -m          # model + create_posts_table migration
 ```
 
 ### Name inference
 
-When you omit `--create` / `--table`, Avalon infers the stub from the migration name (Laravel’s TableGuesser behavior):
+When you omit `--create` / `--table`, Avalon infers the stub from the migration name:
 
 | Name | Stub | Table |
 | --- | --- | --- |
@@ -25,7 +25,7 @@ When you omit `--create` / `--table`, Avalon infers the stub from the migration 
 | `rename_title_in_posts_table` | update | `posts` |
 | `do_something_custom` | blank | — |
 
-Prefer Laravel-style alter names **without** a leading `create_`: `add_slug_to_posts_table`. You may still pass `--create widgets` or `--table posts` to override inference.
+Prefer alter names **without** a leading `create_`: `add_slug_to_posts_table`. You may still pass `--create widgets` or `--table posts` to override inference.
 
 ## Migration structure
 
@@ -117,11 +117,11 @@ SQLite cannot `ALTER TABLE … ADD CONSTRAINT` for an **existing** column. Add f
 ## Running migrations
 
 ```bash
-python grail migrate
-python grail migrate --seed
-python grail migrate:rollback            # --step N
-python grail migrate:fresh --seed
-python grail migrate:status
+grail migrate
+grail migrate --seed
+grail migrate:rollback            # --step N
+grail migrate:fresh --seed
+grail migrate:status
 ```
 
 Always implement `down()` so rollbacks can reverse `up()`. Run Grail commands from your application root so `app.*` imports resolve.

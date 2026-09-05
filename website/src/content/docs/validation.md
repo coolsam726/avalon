@@ -3,7 +3,7 @@ title: Validation
 description: Validate incoming data with FormRequest before controller actions run.
 ---
 
-Avalon validates HTTP input with **FormRequest** classes — Laravel's FormRequest idea on **Pydantic v2**. Invalid input never reaches the controller action.
+Avalon validates HTTP input with **FormRequest** classes built on **Pydantic v2**. Invalid input never reaches the controller action.
 
 ## Defining a form request
 
@@ -25,7 +25,7 @@ class StorePostRequest(FormRequest):
 Generate a stub:
 
 ```bash
-python grail make:request StorePostRequest
+grail make:request StorePostRequest
 ```
 
 ## Using it in a controller

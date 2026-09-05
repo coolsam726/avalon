@@ -3,7 +3,7 @@ title: Hashing
 description: Hash.make / check / needs_rehash — bcrypt default, optional argon2id.
 ---
 
-Avalon’s `Hash` façade mirrors Laravel hashing.
+Avalon’s `Hash` façade hashes and verifies passwords (bcrypt by default).
 
 ```python
 # examples/hashing.py

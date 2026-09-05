@@ -1,11 +1,16 @@
 #!/usr/bin/env python
-"""Grail — Avalon in-application CLI (Laravel ``artisan`` equivalent).
+"""Grail — Avalon in-application CLI.
 
-Run from the project root::
+With the virtualenv active (Avalon installed)::
 
-    python grail version
+    grail version
+    grail serve
+    grail make:controller UserController
+    grail fiddle   # aliases: tinker, repl
+
+Or via this root script::
+
     python grail serve
-    python grail make:controller UserController
 
 Create new apps with ``avalon new``, not this script.
 """

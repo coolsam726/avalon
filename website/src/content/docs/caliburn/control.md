@@ -21,7 +21,7 @@ description: "Conditionals, loops, and @python blocks in Caliburn."
 
 ## Loop variable
 
-Inside `@foreach` / `@forelse`, `loop` exposes Blade-shaped flags:
+Inside `@foreach` / `@forelse`, `loop` exposes:
 `index`, `iteration`, `remaining`, `count`, `first`, `last`, `even`, `odd`, `depth`, `parent`.
 
 ```html

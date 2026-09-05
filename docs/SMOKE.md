@@ -149,7 +149,7 @@ Automated: `tests/smoke/test_m3_smoke.py` + `tests/regression/test_m3_contracts.
 | V1 | `make:controller/middleware/provider/request` | Files land in Python snake_case dirs (`app/http/controllers/…`), importable (`__init__.py` created), `--force` + duplicate guard |
 | V2 | FormRequest injection | Validation runs before the action; the action never sees invalid input |
 | V3 | Failure envelope | 422 `{message: "The given data was invalid.", status, errors}` — the locked M2 shape |
-| V4 | Message wording | `required` / `min` / `max` / `boolean` / `array` read like Laravel; `attributes()` + `messages()` override |
+| V4 | Message wording | `required` / `min` / `max` / `boolean` / `array` use Avalon’s default copy; `attributes()` + `messages()` override |
 | V5 | `authorize()` false | 403 `{message: "This action is unauthorized.", status}` |
 | V6 | `url()` / `asset()` / `redirect()` | Every link carries `APP_BASE_PATH`; absolute URLs pass through untouched |
 | V7 | Generated app under a subpath | Welcome page emits `/apps/x/api/health`, never `/api/health` |
@@ -263,7 +263,7 @@ pytest -q tests/test_m6_*.py
 
 ### M6 exit criteria
 
-- [x] Blade-parity Caliburn + progress Caliburn-first
+- [x] Caliburn full surface + progress Caliburn-first
 - [x] Coverage 100% on `avalon.caliburn`; suite ≥ 98%
 - [x] No M7 work until this gate passes
 
@@ -326,10 +326,10 @@ make test-cov
 Manual (from `examples/progress`):
 
 ```bash
-python grail progress:hello Avalon
-python grail list
-python grail schedule:run
-python grail fiddle   # interactive; Ctrl-D to exit
+grail progress:hello Avalon
+grail list
+grail schedule:run
+grail fiddle   # aliases: tinker, repl — interactive; Ctrl-D to exit
 ```
 
 ### M9 exit criteria
@@ -339,7 +339,7 @@ python grail fiddle   # interactive; Ctrl-D to exit
 - [x] `dump()` / `dd()` (Rich CLI + web HTML / api JSON; `/dd` · `/api/dd`)
 - [x] Schedule DSL + `schedule:run` / `schedule:work` + filesystem mutex
 - [x] Console exceptions report through M8 Handler
-- [x] `grail fiddle` REPL (IPython → ptpython → Rich fallback)
+- [x] `grail fiddle` REPL (aliases: `tinker`, `repl`; IPython → ptpython → Rich fallback)
 - [x] Progress `progress:hello` / `progress:prompts` + `routes/console.py`; smoke
 - [x] Coverage ≥ 98% (`avalon.console` 100%)
 - [x] No M10 work until this gate passes
@@ -426,7 +426,7 @@ pytest -q tests/test_m15_*.py tests/smoke/test_m15_smoke.py
 ### M15 exit criteria
 
 - [x] `Cache` façade + array / file / database stores
-- [x] Atomic `add` + store-native locks; tags array-only (Laravel-honest)
+- [x] Atomic `add` + store-native locks; tags array-only
 - [x] Docs + smoke; no M16 until green
 
 ---

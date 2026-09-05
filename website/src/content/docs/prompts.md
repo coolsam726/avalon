@@ -1,11 +1,11 @@
 ---
 title: Prompts
-description: Beautiful interactive console prompts — Laravel Prompts for Avalon.
+description: Beautiful interactive console prompts for Grail commands.
 ---
 
 ## Introduction
 
-Avalon Prompts add Laravel Prompts-shaped interaction to Grail commands: styled text fields, arrow-key selects, confirmations, spinners, and progress bars.
+Avalon Prompts give Grail commands rich terminal UX: styled text fields, arrow-key selects, confirmations, spinners, and progress bars.
 
 ```python
 from avalon.console.prompts import text, select, confirm, spin, progress, intro, outro
@@ -18,7 +18,7 @@ if confirm("Proceed?", default=True):
 outro("Done")
 ```
 
-Inside a `Command`, use the Laravel-familiar helpers:
+Inside a `Command`, use the built-in helpers:
 
 ```python
 name = self.ask("Name", default="Sam")
@@ -51,7 +51,7 @@ text(
 )
 ```
 
-Return an error string from `validate`, or `None` when valid (same contract as Laravel Prompts).
+Return an error string from `validate`, or `None` when valid.
 
 ## Non-interactive fallbacks
 
@@ -67,10 +67,10 @@ That keeps CI and scripted runs deterministic.
 
 ```bash
 cd examples/progress
-python grail progress:prompts
+grail progress:prompts
 ```
 
 ## Related
 
-- [Artisan Console](/console/)
+- [Grail Console](/console/)
 - [Task Scheduling](/scheduling/)

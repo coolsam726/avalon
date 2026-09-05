@@ -75,7 +75,7 @@ Validation uses `ValidationException` (422 with `errors`). Default production co
 
 ## `dump()` / `dd()`
 
-Intentional debug halts use `from avalon import dump, dd` — not application errors. The Handler skips reporting `DumpAndDie` and renders a dedicated dump page (web HTML or api JSON) with status **200**. See [Artisan Console](/console/#dump--dd).
+Intentional debug halts use `from avalon import dump, dd` — not application errors. The Handler skips reporting `DumpAndDie` and renders a dedicated dump page (web HTML or api JSON) with status **200**. See [Grail Console](/console/#dump--dd).
 
 ## Related
 

@@ -1,13 +1,13 @@
 ---
 title: Caliburn
-description: Avalon's featherweight Blade-parity view engine for Python.
+description: Avalon's featherweight view engine for Python.
 ---
 
 # Caliburn
 
-Caliburn is Avalon's view engine — a **new templating system for Python** with
-Laravel Blade's mental model: layouts, components, slots, and directives,
-compiled ahead of time for a thin render path.
+Caliburn is Avalon's view engine — a **templating system for Python** with
+layouts, components, slots, and directives, compiled ahead of time for a thin
+render path.
 
 Templates use the **`.cal.html`** extension and live under `resources/views`.
 
@@ -15,7 +15,7 @@ Templates use the **`.cal.html`** extension and live under `resources/views`.
 # app/http/controllers/welcome_controller.py
 from avalon.caliburn import view
 
-return view("welcome", {"name": "Artisan"})
+return view("welcome", {"name": "Ada"})
 ```
 
 ```html
@@ -27,10 +27,10 @@ return view("welcome", {"name": "Artisan"})
 @endsection
 ```
 
-:::tip[Full Blade parity]
-M6 exhausts Blade's app-facing surface — inheritance, control flow, components
-& slots, stacks, localization directives, and custom `@directive`s — not a
-minimal subset. This section grows as each surface ships.
+:::tip[Full surface]
+Caliburn covers the app-facing template surface — inheritance, control flow,
+components & slots, stacks, localization directives, and custom `@directive`s —
+not a minimal subset. This section grows as each surface ships.
 :::
 
 ## In this section

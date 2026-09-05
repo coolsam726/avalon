@@ -44,14 +44,14 @@ By default Avalon does **not** lazy-load on attribute access. A hidden query the
 
 ## Defining relationships
 
-| Method | Laravel equivalent |
+| Method | Role |
 | --- | --- |
-| `has_one` / `has_many` | HasOne / HasMany |
-| `belongs_to` | BelongsTo (`associate` / `dissociate`) |
-| `belongs_to_many` | BelongsToMany + pivot |
-| `has_one_through` / `has_many_through` | HasOneThrough / HasManyThrough |
-| `morph_one` / `morph_many` | MorphOne / MorphMany |
-| `morph_to(name, types={…})` | MorphTo — pass the type map |
+| `has_one` / `has_many` | One-to-one / one-to-many |
+| `belongs_to` | Inverse of has-one/has-many (`associate` / `dissociate`) |
+| `belongs_to_many` | Many-to-many + pivot |
+| `has_one_through` / `has_many_through` | Distant one-to-one / one-to-many via an intermediate |
+| `morph_one` / `morph_many` | Polymorphic one-to-one / one-to-many |
+| `morph_to(name, types={…})` | Inverse polymorphic — pass the type map |
 | `morph_to_many` / `morphed_by_many` | Polymorphic many-to-many |
 
 Has-many helpers: `create`, `save`, `save_many`, `create_many`, `first_or_create`.

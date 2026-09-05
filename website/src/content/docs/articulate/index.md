@@ -3,7 +3,7 @@ title: Articulate — Getting Started
 description: Define Active Record models and work with your database records.
 ---
 
-Avalon includes **Articulate**, its Active Record ORM. Each database table has a corresponding model used to query and persist rows — familiar if you have used Laravel's Eloquent, with first-class `async`/`await`.
+**Articulate** is Avalon's Active Record ORM. Each database table has a corresponding model used to query and persist rows, with first-class `async`/`await`.
 
 Every persistence and read method is **`await`ed** — Avalon is async-first for ASGI.
 
@@ -25,8 +25,8 @@ flights = await Flight.query().with_("airline").where("active", True).get()
 Generate a model (and optionally a migration) with Grail:
 
 ```bash
-python grail make:model Flight
-python grail make:model Flight -m
+grail make:model Flight
+grail make:model Flight -m
 ```
 
 ## Articulate model conventions
@@ -111,22 +111,25 @@ def set_name_attribute(self, value: str) -> str:
 - `exists` — whether the model has been persisted
 - `to_dict()` / `to_json()` honor `hidden`, `visible`, `appends`, and loaded relations
 
-## Important differences from Laravel Eloquent
+## Async & loading defaults
 
-| Laravel Eloquent | Articulate |
+| Topic | Articulate behavior |
 | --- | --- |
-| Synchronous | Every read/write is `await`ed |
-| Lazy load on `$user->posts` | **Off by default.** Unloaded `user.posts` raises. Opt in with `lazy_relations = True` so `await user.posts` loads; or use `with_` / `await user.posts().get()` |
-| `where("col", val)` or `where("col", ">", val)` | Same rules; two-arg form is **only** the `=` shortcut |
-| `MassAssignmentException` | `MassAssignmentError` |
-| `php artisan migrate` | `python grail migrate` |
+| Async | Every read/write is `await`ed |
+| Relations | **Off by default** on attribute access. Unloaded `user.posts` raises. Opt in with `lazy_relations = True` so `await user.posts` loads; or use `with_` / `await user.posts().get()` |
+| `where` | `where("col", val)` or `where("col", ">", val)` — two-arg form is **only** the `=` shortcut |
+| Mass assignment | `MassAssignmentError` |
+| Migrations | `grail migrate` |
 
 :::tip[N+1 safety]
 Failing loud on unloaded relations is the default. Prefer `with_` / `load` on list
-endpoints. If you want Laravel-shaped late loading, set `lazy_relations = True` and
+endpoints. For awaitable late loading, set `lazy_relations = True` and
 **await** the relation (`posts = await user.posts`) — never silent attribute IO.
 :::
 
+:::note[Coming from Eloquent?]
+If you know Laravel Eloquent, Articulate will feel familiar — same Active Record shape, snake_case methods, and async throughout. The biggest habit change is **no silent lazy loading** unless you opt in.
+:::
 
 ## Next steps
 

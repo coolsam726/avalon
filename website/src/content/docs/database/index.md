@@ -64,7 +64,7 @@ pip install avalon[db]       # all optional drivers
 A `url` key on a connection dict is used as-is (sync prefixes are upgraded to async drivers). For SQL Server, set `odbc_driver` (default `ODBC Driver 18 for SQL Server`) and `trust_server_certificate` as needed. For Oracle, prefer `service_name` (or `sid`).
 
 :::note[Oracle]
-Oracle is not a first-party Laravel database driver. Avalon offers it as an optional extra for teams that need it — similar in spirit to community packages such as yajra/laravel-oci8.
+Oracle is an optional Avalon extra for teams that need it — not part of the default SQLite / PostgreSQL / MySQL / SQL Server set.
 :::
 
 
