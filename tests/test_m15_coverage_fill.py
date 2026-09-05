@@ -464,3 +464,103 @@ def test_file_increment_expired_and_corrupt_lock(tmp_path: Path) -> None:
     assert store.lock("held", seconds=5).get() is True
     assert store.flush_locks() is True
     assert store.flush_locks() is True  # no .locks dir
+
+
+def test_cache_lock_sleep_and_db_block_success(tmp_path: Path) -> None:
+    """Hit FileLock/DatabaseLock block success + sleep arcs."""
+    import asyncio
+
+    from avalon.orm import DatabaseManager, set_manager as set_db
+
+    fs = FileStore(tmp_path / "locks")
+    # Success path of FileLock.block (line: return True when acquired)
+    assert fs.lock("free", seconds=5).block(1) is True
+    assert fs.lock("free-cb", seconds=5).block(1, lambda: "ok") == "ok"
+
+    held = fs.lock("sleep", seconds=5)
+    assert held.get() is True
+    start = time.monotonic()
+    with pytest.raises(LockTimeoutError):
+        fs.lock("sleep", seconds=5).block(1)
+    assert time.monotonic() - start >= 0.05
+    # Re-acquire as same owner overwrites (branch where condition is false)
+    assert fs.lock("sleep", seconds=5, owner=held.owner_token()).get() is True
+    # Expired lock file → overwrite path
+    path = fs._lock_path("expired")  # noqa: SLF001
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(pickle.dumps({"owner": "old", "expires": time.time() - 10}, protocol=4))
+    assert fs.lock("expired", seconds=5).get() is True
+    held.force_release()
+
+    async def _boot() -> DatabaseManager:
+        manager = DatabaseManager(
+            {
+                "default": "sqlite",
+                "connections": {"sqlite": {"driver": "sqlite", "database": ":memory:"}},
+            }
+        )
+        set_db(manager)
+        return manager
+
+    db = asyncio.run(_boot())
+    try:
+        ensure_cache_table_sync("sqlite")
+        store = DatabaseStore(connection="sqlite")
+        assert store.lock("free", seconds=5).block(1) is True
+        store.flush_locks()
+        assert store.lock("cb", seconds=5).block(1, lambda: "ok") == "ok"
+        # Sleep path while held
+        held_db = store.lock("held-db", seconds=5)
+        assert held_db.get() is True
+        start = time.monotonic()
+        with pytest.raises(LockTimeoutError):
+            store.lock("held-db", seconds=5).block(1)
+        assert time.monotonic() - start >= 0.05
+        held_db.force_release()
+    finally:
+        asyncio.run(db.disconnect())
+        set_db(None)
+
+
+def test_tags_duplicate_key_and_provider_unbound(tmp_path: Path) -> None:
+    from avalon.cache.provider import CacheServiceProvider
+
+    manager = CacheManager(config={"default": "array", "stores": {"array": {"driver": "array"}}})
+    set_manager(manager)
+    tags = Cache.tags("dup")
+    tags.put("k", 1, 10)
+    tags.put("k", 2, 10)  # key already in meta list
+    assert tags.get("k") == 2
+    set_manager(None)
+
+    app = Application(tmp_path)
+    # boot with no CacheManager binding → branch where bound is false
+    CacheServiceProvider(app).boot()
+
+
+def test_schedule_filesystem_mutex_fallback(tmp_path: Path) -> None:
+    """When Cache is not booted, without_overlapping uses filesystem Mutex."""
+    from avalon.console.scheduling import Event, run_event, _try_cache_lock
+
+    set_manager(None)
+    assert _try_cache_lock("x") is None
+
+    ran = {"n": 0}
+
+    def cb() -> None:
+        ran["n"] += 1
+
+    event = Event(description="fs-mutex", callback=cb).without_overlapping_lock()
+    assert run_event(event, base_path=tmp_path) == 0
+    assert ran["n"] == 1
+    # Second overlapping run while mutex file held — acquire another Event same mutex
+    # Hold by running with a long-held lock via Mutex directly
+    from avalon.console.mutex import Mutex
+
+    mutex = Mutex(tmp_path, event.mutex_name())
+    assert mutex.acquire() is True
+    assert run_event(event, base_path=tmp_path) == 0
+    assert ran["n"] == 1  # skipped
+    mutex.release()
+    assert run_event(event, base_path=tmp_path) == 0
+    assert ran["n"] == 2
