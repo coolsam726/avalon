@@ -102,6 +102,24 @@ class Authenticate(Middleware):
         return await call_next(request)
 
 
+class EnsureEmailIsVerified(Middleware):
+    """Require a verified email (alias: ``verified``) — Laravel-shaped."""
+
+    async def handle(self, request: Request, call_next: NextCall) -> StarletteResponse:
+        manager = get_auth() or getattr(request, "_auth", None)
+        user = manager.user() if manager is not None else None
+        if user is None:
+            return await _unauthenticated(request)
+        checker = getattr(user, "has_verified_email", None)
+        if callable(checker) and not checker():
+            from avalon.http.exceptions import ForbiddenHttpException
+
+            if _wants_json(request):
+                raise ForbiddenHttpException("Your email address is not verified.")
+            return redirect("/email/verify")
+        return await call_next(request)
+
+
 class RedirectIfAuthenticated(Middleware):
     """Send authenticated users away from guest-only pages (alias: ``guest``)."""
 

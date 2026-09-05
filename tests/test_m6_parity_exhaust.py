@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from avalon.caliburn.compiler import compile_template
 from avalon.caliburn.engine import Engine
 
@@ -83,6 +85,29 @@ def test_csrf_stub() -> None:
     assert 'name="_token"' in html
     assert 'value="tok"' in html
     assert 'type="hidden"' in html
+
+
+def test_dump_and_dd_directives() -> None:
+    from avalon.debug import DumpAndDie
+
+    dump_render = compile_template("before @dump(user) after", name="demo.dump")
+    html = dump_render({"user": {"name": "Ada"}}, None)
+    assert "before" in html and "after" in html
+    assert "avalon-dump" in html
+    assert "Ada" in html or "&quot;Ada&quot;" in html
+    assert "demo.dump" in html
+
+    multi = compile_template("@dump(a, b)")
+    multi_html = multi({"a": 1, "b": True}, None)
+    assert "#0" in multi_html and "#1" in multi_html
+
+    bare = compile_template("@dump")
+    assert "avalon-dump" in bare({}, None)
+
+    dd_render = compile_template("@dd(user)")
+    with pytest.raises(DumpAndDie) as caught:
+        dd_render({"user": {"id": 7}}, None)
+    assert caught.value.values == ({"id": 7},)
 
 
 def test_error_enderror() -> None:

@@ -92,6 +92,8 @@ curl -s -X POST "$BASE/api/items" -H "Content-Type: application/json" -d '{}' | 
 curl -si "$BASE/api/boom" | head -n 20
 curl -si "$BASE/api/explode" | head -n 20
 curl -si "$BASE/boom" | head -n 20
+curl -si "$BASE/dd" | head -n 20
+curl -s "$BASE/api/dd" | python -m json.tool
 curl -s "$BASE/api/missing" | python -m json.tool
 
 # match()
@@ -152,17 +154,28 @@ curl -s "$BASE/api/posts/1/comments" | python -m json.tool
 | **M5** | `database/migrations` + `/api/orm` tour — migrate/seed, relations, soft deletes, upsert |
 | **M6** | Caliburn views — layouts, components, showcase, `view()` |
 | **M7** | Session + CSRF, `/login`, Hash, `/api/me` bearer auth |
+| **M8** | Handler + `/boom` · `/api/explode`, `errors:publish`, logging |
+| **M9** | `progress:hello`, `routes/console.py`, `grail schedule:run`, `grail fiddle` |
+| **M10** | `Storage` / `storage:link`, `config/filesystems.py` |
+| **M11–M13** | `python grail progress:demo` — queue job, WelcomeMail, reset/verify notifications |
 
 ## Growing with Avalon
 
-M0–M8 are closed. Next is **M9 — Console + scheduler**. Roadmap continues through Mail (M12) and Notifications (M13).
+M0–M13 are closed. Next is **M14 — Helpers + Strings**.
 
 ## CLI
 
 ```bash
 python grail version
+python grail list
+python grail progress:hello Avalon
+python grail progress:prompts
+python grail progress:demo
+python grail storage:link
+python grail schedule:run
+python grail fiddle
+python grail queue:work
 python grail migrate
-python grail migrate:status
 python grail serve
 ```
 

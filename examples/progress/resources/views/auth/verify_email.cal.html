@@ -1,0 +1,17 @@
+@extends('layouts.app')
+
+@section('content')
+  <h1>Verify your email</h1>
+  <p>Thanks for signing up — please verify <strong>{{ email or "your email" }}</strong>.</p>
+  @if(session('status'))
+    <p class="ok">{{ session('status') }}</p>
+  @endif
+  @if(session('error'))
+    <p class="err">{{ session('error') }}</p>
+  @endif
+  <form method="post" action="{{ resend_url }}">
+    @csrf
+    <button type="submit">Resend verification email</button>
+  </form>
+  <p><a href="{{ home_url }}">Home</a></p>
+@endsection

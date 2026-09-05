@@ -1,0 +1,82 @@
+"""Tests for Fiddle pretty display (models, collections, JSON)."""
+
+from __future__ import annotations
+
+from types import SimpleNamespace
+
+from avalon.console.display import (
+    describe,
+    dump,
+    is_model,
+    is_model_collection,
+    render,
+    serialize,
+    to_json,
+)
+
+
+class FakeModel:
+    def __init__(self, **attrs):
+        self._attributes = attrs
+        self._key = attrs.get("id")
+
+    def get_key(self):
+        return self._key
+
+    def to_dict(self):
+        return dict(self._attributes)
+
+
+class FakeModelCollection(list):
+    def model_keys(self):
+        return [item.get_key() for item in self]
+
+    def to_dict(self):
+        return [item.to_dict() for item in self]
+
+
+def test_serialize_model_and_collection() -> None:
+    user = FakeModel(id=1, name="Ada", email="ada@example.com")
+    assert is_model(user)
+    assert serialize(user) == {"id": 1, "name": "Ada", "email": "ada@example.com"}
+    assert "Ada" in to_json(user)
+
+    users = FakeModelCollection([user, FakeModel(id=2, name="Grace")])
+    assert is_model_collection(users)
+    assert serialize(users) == [
+        {"id": 1, "name": "Ada", "email": "ada@example.com"},
+        {"id": 2, "name": "Grace"},
+    ]
+    assert describe(users).startswith("Collection[")
+
+
+def test_serialize_nested_and_primitives() -> None:
+    assert serialize(None) is None
+    assert serialize("x") == "x"
+    assert serialize({"a": FakeModel(id=1, name="A")}) == {"a": {"id": 1, "name": "A"}}
+    assert serialize([1, FakeModel(id=2)]) == [1, {"id": 2}]
+
+
+def test_describe_shapes() -> None:
+    assert describe(FakeModel(id=9)).startswith("FakeModel")
+    assert "dict" in describe({"a": 1})
+    assert "list" in describe([1, 2])
+
+
+def test_render_and_dump(capsys) -> None:
+    user = FakeModel(id=1, name="Ada")
+    render(user)
+    result = dump(user, {"ok": True})
+    assert result == (user, {"ok": True})
+    captured = capsys.readouterr()
+    text = captured.out + captured.err
+    assert "Ada" in text or "FakeModel" in text
+    assert "ok" in text or "True" in text or "dict" in text
+
+
+def test_paginator_and_fallback_to_dict() -> None:
+    page = SimpleNamespace(
+        items=[FakeModel(id=1)],
+        to_dict=lambda: {"data": [{"id": 1}], "total": 1},
+    )
+    assert serialize(page) == {"data": [{"id": 1}], "total": 1}

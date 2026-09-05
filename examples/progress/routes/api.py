@@ -45,6 +45,7 @@ with Route.group(prefix="/api", middleware=["api"]):
     Route.options("/probe", [DemoController, "options_probe"])
     Route.get("/boom", [DemoController, "boom"])
     Route.get("/explode", [DemoController, "explode"])
+    Route.get("/dd", [DemoController, "dump_demo"])
     Route.get("/missing", [DemoController, "missing"])
     Route.match(["GET", "POST"], "/echo/{item}", [DemoController, "show"])
 

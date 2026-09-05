@@ -41,6 +41,33 @@ class UploadedFile:
     async def seek(self, offset: int) -> None:
         await self._upload.seek(offset)
 
+    async def store(
+        self,
+        path: str = "",
+        *,
+        disk: str | None = None,
+        visibility: str | None = None,
+    ) -> str:
+        """Store on a filesystem disk (Laravel ``UploadedFile::store``)."""
+        from avalon.filesystem import Storage
+
+        return await Storage.disk(disk).put_file_async(path, self, visibility=visibility)
+
+    async def store_as(
+        self,
+        path: str,
+        name: str,
+        *,
+        disk: str | None = None,
+        visibility: str | None = None,
+    ) -> str:
+        """Store under an explicit filename (Laravel ``UploadedFile::storeAs``)."""
+        from avalon.filesystem import Storage
+
+        target = f"{path.rstrip('/')}/{name}" if path else name
+        data = await self.read()
+        return Storage.disk(disk).put(target, data, visibility=visibility)
+
 
 class Request:
     """Laravel-flavored HTTP request.

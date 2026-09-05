@@ -20,6 +20,8 @@ _API_LINKS = [
     {"href": "/api/boom", "label": "HttpException JSON shape"},
     {"href": "/api/explode", "label": "M8 unhandled → JSON envelope"},
     {"href": "/boom", "label": "M8 unhandled → HTML (debug/production)"},
+    {"href": "/dd", "label": "M9 dd() → HTML dump page"},
+    {"href": "/api/dd", "label": "M9 dd() → JSON dump"},
 ]
 
 _FEATURES = [
@@ -73,3 +75,11 @@ class WelcomeController(Controller):
 
     async def boom(self) -> Response:
         raise RuntimeError("Intentional demo failure")
+
+    async def dump_demo(self) -> Response:
+        from avalon import dd
+
+        dd(
+            {"milestone": "M9", "helper": "dd()"},
+            ["web", "html", "halt"],
+        )

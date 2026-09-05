@@ -87,5 +87,11 @@ class DemoController(Controller):
     async def explode(self) -> dict[str, str]:
         raise RuntimeError("Intentional demo failure")
 
+    async def dump_demo(self) -> dict[str, str]:
+        from avalon import dd
+
+        dd({"milestone": "M9", "helper": "dd()"}, ["api", "json", "halt"])
+        return {}  # pragma: no cover — dd() never returns
+
     async def missing(self) -> dict[str, str]:
         raise NotFoundHttpException("Demo resource not found")

@@ -30,6 +30,7 @@ from avalon.auth.guard import (
 from avalon.auth.middleware import (
     Authenticate,
     AuthenticateWithBasicAuth,
+    EnsureEmailIsVerified,
     RedirectIfAuthenticated,
     RequirePassword,
     StartAuth,
@@ -47,6 +48,7 @@ __all__ = [
     "Authenticated",
     "Authenticatable",
     "AuthenticatableMixin",
+    "EnsureEmailIsVerified",
     "Failed",
     "Guard",
     "Login",

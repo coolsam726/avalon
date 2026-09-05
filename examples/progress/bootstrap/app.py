@@ -6,7 +6,13 @@ from pathlib import Path
 
 from app.http.middleware.demo_tag_middleware import DemoTagMiddleware
 
-from avalon.auth import Authenticate, AuthenticateWithBasicAuth, RedirectIfAuthenticated, RequirePassword
+from avalon.auth import (
+    Authenticate,
+    AuthenticateWithBasicAuth,
+    EnsureEmailIsVerified,
+    RedirectIfAuthenticated,
+    RequirePassword,
+)
 from avalon.auth.middleware import StartAuth
 from avalon.framework import Application, Middleware
 from avalon.session import EncryptCookies, StartSession, VerifyCsrfToken
@@ -31,6 +37,7 @@ def configure_middleware(middleware: Middleware) -> None:
             "guest": RedirectIfAuthenticated,
             "password.confirm": RequirePassword,
             "auth.basic": AuthenticateWithBasicAuth,
+            "verified": EnsureEmailIsVerified,
             "demo.tag": DemoTagMiddleware,
         }
     )

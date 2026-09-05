@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from avalon.auth import AuthenticatableMixin
+from avalon.notifications import MustVerifyEmail, Notifiable
 from avalon.orm import Model, relation
 
 
-class User(AuthenticatableMixin, Model):
-    fillable = ("email", "name", "password", "remember_token", "api_token")
+class User(AuthenticatableMixin, Notifiable, MustVerifyEmail, Model):
+    fillable = ("email", "name", "password", "remember_token", "api_token", "email_verified_at")
     hidden = ("password", "remember_token")
 
     @relation

@@ -60,7 +60,13 @@ def scaffold_app(name: str, destination: Path | None = None) -> Path:
         "config/hashing.py": _config_hashing(),
         "config/database.py": _config_database(),
         "config/logging.py": _config_logging(),
+        "config/filesystems.py": _config_filesystems(),
+        "config/queue.py": _config_queue(),
+        "config/mail.py": _config_mail(),
+        "config/notifications.py": _config_notifications(),
         "app/models/__init__.py": "",
+        "app/console/__init__.py": "",
+        "app/console/commands/__init__.py": "",
         "app/exceptions/__init__.py": "",
         "app/exceptions/handler.py": _exception_handler(),
         "database/__init__.py": "",
@@ -70,17 +76,22 @@ def scaffold_app(name: str, destination: Path | None = None) -> Path:
         "routes/__init__.py": "",
         "routes/api.py": _routes_api(),
         "routes/web.py": _routes_web(),
+        "routes/console.py": _routes_console(),
         "lang/en/messages.py": _lang_messages_en(),
         "lang/en/validation.py": _lang_validation_stub(),
         "lang/en.json": '{}\n',
         "resources/views/.gitkeep": "",
+        "resources/views/mail/.gitkeep": "",
         "resources/views/errors/404.cal.html": _error_view(404, "Not Found"),
         "resources/views/errors/419.cal.html": _error_view(419, "Page Expired"),
         "resources/views/errors/429.cal.html": _error_view(429, "Too Many Requests"),
         "resources/views/errors/500.cal.html": _error_view(500, "Server Error"),
         "resources/views/errors/503.cal.html": _error_view(503, "Service Unavailable"),
+        "storage/app/.gitkeep": "",
+        "storage/app/public/.gitkeep": "",
         "storage/framework/.gitkeep": "",
         "storage/logs/.gitkeep": "",
+        "public/.gitkeep": "",
     }
 
     for relative, content in files.items():
@@ -98,6 +109,8 @@ _GRAIL_SCRIPT = '''#!/usr/bin/env python
 
     python grail version
     python grail serve
+    python grail list
+    python grail fiddle
 """
 
 from __future__ import annotations
@@ -118,6 +131,7 @@ venv/
 .mypy_cache/
 .caliburn_cache/
 storage/framework/views/
+storage/framework/schedule/
 database/*.sqlite
 database/*.sqlite-*
 *.egg-info/
@@ -203,7 +217,13 @@ def configure_middleware(middleware: Middleware) -> None:
     # Behind a load balancer / ingress (from avalon.http import HEADER_X_FORWARDED_ALL):
     # middleware.trust_proxies(at="*", headers=HEADER_X_FORWARDED_ALL)
     # middleware.trust_hosts(at=["example.com", "*.example.com"])
-    from avalon.auth import Authenticate, AuthenticateWithBasicAuth, RedirectIfAuthenticated, RequirePassword
+    from avalon.auth import (
+        Authenticate,
+        AuthenticateWithBasicAuth,
+        EnsureEmailIsVerified,
+        RedirectIfAuthenticated,
+        RequirePassword,
+    )
     from avalon.auth.middleware import StartAuth
     from avalon.session import EncryptCookies, StartSession, VerifyCsrfToken
 
@@ -218,6 +238,7 @@ def configure_middleware(middleware: Middleware) -> None:
             "guest": RedirectIfAuthenticated,
             "password.confirm": RequirePassword,
             "auth.basic": AuthenticateWithBasicAuth,
+            "verified": EnsureEmailIsVerified,
         }}
     )
     middleware.web(
@@ -429,6 +450,110 @@ config = {
 '''
 
 
+def _config_filesystems() -> str:
+    return '''"""Filesystem disks."""
+
+from avalon.config import env
+
+config = {
+    "default": env("FILESYSTEM_DISK", "local"),
+    "cloud": "s3",
+    "disks": {
+        "local": {
+            "driver": "local",
+            "root": "storage/app",
+            "visibility": "private",
+        },
+        "public": {
+            "driver": "local",
+            "root": "storage/app/public",
+            "url": "/storage",
+            "visibility": "public",
+        },
+        "s3": {
+            "driver": "s3",
+            "key": env("AWS_ACCESS_KEY_ID"),
+            "secret": env("AWS_SECRET_ACCESS_KEY"),
+            "region": env("AWS_DEFAULT_REGION"),
+            "bucket": env("AWS_BUCKET"),
+            "url": env("AWS_URL"),
+            "endpoint": env("AWS_ENDPOINT"),
+            "visibility": "private",
+        },
+    },
+    "links": {
+        "public/storage": "storage/app/public",
+    },
+}
+'''
+
+
+def _config_queue() -> str:
+    return '''"""Queue connections."""
+
+from avalon.config import env
+
+config = {
+    "default": env("QUEUE_CONNECTION", "sync"),
+    "connections": {
+        "sync": {"driver": "sync"},
+        "database": {
+            "driver": "database",
+            "table": "jobs",
+            "queue": "default",
+            "retry_after": 90,
+        },
+    },
+    "failed": {
+        "driver": "database",
+        "table": "failed_jobs",
+    },
+}
+'''
+
+
+def _config_mail() -> str:
+    return '''"""Mailers and from address."""
+
+from avalon.config import env
+
+config = {
+    "default": env("MAIL_MAILER", "log"),
+    "from": {
+        "address": env("MAIL_FROM_ADDRESS", "hello@example.com"),
+        "name": env("MAIL_FROM_NAME", "Example"),
+    },
+    "mailers": {
+        "smtp": {
+            "transport": "smtp",
+            "host": env("MAIL_HOST", "127.0.0.1"),
+            "port": env("MAIL_PORT", 2525),
+            "encryption": env("MAIL_ENCRYPTION"),
+            "username": env("MAIL_USERNAME"),
+            "password": env("MAIL_PASSWORD"),
+        },
+        "log": {"transport": "log"},
+        "array": {"transport": "array"},
+    },
+}
+'''
+
+
+def _config_notifications() -> str:
+    return '''"""Notification channels."""
+
+config = {
+    "default": "mail",
+    "channels": {
+        "mail": {"driver": "mail"},
+        "database": {"driver": "database"},
+        "log": {"driver": "log"},
+        "array": {"driver": "array"},
+    },
+}
+'''
+
+
 def _exception_handler() -> str:
     return '''"""Application exception handler."""
 
@@ -617,4 +742,16 @@ from avalon.routing import Route
 
 with Route.group(prefix="/api", middleware=["api"]):
     Route.get("/health", [HealthController, "index"])
+'''
+
+
+def _routes_console() -> str:
+    return '''"""Console schedule — loaded by ``python grail schedule:run``."""
+
+from __future__ import annotations
+
+from avalon.console import schedule
+
+# schedule.call(lambda: None, description="heartbeat").every_minute()
+# schedule.command("inspire").hourly()
 '''

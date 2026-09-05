@@ -131,6 +131,27 @@ class {name}(Seeder):
 '''
 
 
+def _command_stub(name: str) -> str:
+    command_name = "".join(
+        f"-{c.lower()}" if c.isupper() else c for c in name.replace("Command", "")
+    ).lstrip("-") or "command"
+    return f'''"""{name}."""
+
+from __future__ import annotations
+
+from avalon.console import Command
+
+
+class {name}(Command):
+    signature = "{command_name}"
+    description = "{name}"
+
+    def handle(self) -> int:
+        self.info("{name} running")
+        return 0
+'''
+
+
 BLUEPRINTS: dict[str, Blueprint] = {
     "controller": Blueprint(("app", "http", "controllers"), "controller"),
     "middleware": Blueprint(("app", "http", "middleware"), "middleware"),
@@ -138,6 +159,7 @@ BLUEPRINTS: dict[str, Blueprint] = {
     "request": Blueprint(("app", "http", "requests"), "request"),
     "model": Blueprint(("app", "models"), "model"),
     "seeder": Blueprint(("database", "seeders"), "seeder"),
+    "command": Blueprint(("app", "console", "commands"), "command"),
 }
 
 _STUBS = {
@@ -147,6 +169,7 @@ _STUBS = {
     "request": _request_stub,
     "model": _model_stub,
     "seeder": _seeder_stub,
+    "command": _command_stub,
 }
 
 

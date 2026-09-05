@@ -27,7 +27,8 @@ status = await Password.reset(
 
 Statuses map through `lang/en/passwords.py` via `Password.status_message(status)`.
 
-Delivery is pluggable (mail waits on notifications):
+Delivery uses notifications by default (``ResetPasswordNotification`` via mail).
+Override with ``Password.create_url_using(callback)`` when you need a custom path.
 
 ```python
 # app/providers/app_service_provider.py
@@ -47,3 +48,5 @@ Successful resets dispatch a `PasswordReset` auth event.
 
 - [Authentication](/authentication/)
 - [Hashing](/hashing/)
+- [Notifications](/notifications/)
+- [Mail](/mail/)

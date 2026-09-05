@@ -40,6 +40,11 @@ Route definitions for your application. By convention:
 
 - `routes/web.py` — routes that return HTML
 - `routes/api.py` — routes that return JSON
+- `routes/console.py` — scheduled tasks (loaded by `grail schedule:run`, not the HTTP kernel)
+
+### The `app/console` directory
+
+Console `Command` classes (`python grail make:command …`). See [Artisan Console](/console/) and [Task Scheduling](/scheduling/).
 
 ### The `lang` directory
 
@@ -47,11 +52,13 @@ Translation catalogs for localization (`lang/en/…`, `lang/en.json`, and so on)
 
 ### The `grail` script
 
-The entry point for Avalon's command-line interface. Generate code, run migrations, and serve your application:
+The entry point for Avalon's command-line interface. Generate code, run migrations, schedule work, and open Fiddle:
 
 ```bash
 python grail make:controller PostController
 python grail migrate
+python grail schedule:run
+python grail fiddle
 python grail serve
 ```
 
