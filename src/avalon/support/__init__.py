@@ -1,4 +1,4 @@
-"""Illuminate-style Support helpers (Collections, Arr, Str, Number, …)."""
+"""Support helpers (Collections, Arr, Str, Number, …)."""
 
 from __future__ import annotations
 

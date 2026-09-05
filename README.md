@@ -1,13 +1,14 @@
 # Avalon
 
-Laravel-inspired Python web framework with Adonis-class DX, built on FastAPI/Starlette.
+Python web framework with Adonis-class DX, built on FastAPI/Starlette — inspired by Laravel’s application shape.
 
 | Piece | Name |
 | --- | --- |
 | Framework | Avalon (`avalon`) |
-| Create apps | `avalon new` (like `laravel new`) |
-| In-app CLI | `python grail …` (like `php artisan …`) |
+| Create apps | `avalon new` |
+| In-app CLI | **Grail** — `grail …` (or `python grail …` via the root script) |
 | View engine | Caliburn (`avalon.caliburn`) — templates use `.cal.html` |
+| ORM | Articulate (`avalon.orm`) |
 
 ## Canonical plan
 
@@ -19,7 +20,7 @@ Laravel-inspired Python web framework with Adonis-class DX, built on FastAPI/Sta
 
 ## Status
 
-**Status:** M5 — ORM complete (Articulate / `avalon.orm`): Active Record `Model` + query builder, relationships, soft deletes, events, migrations, seeders. Living example: [`examples/progress`](examples/progress). Next: **M6 — Caliburn**.
+**Status:** M0–M15 closed (through Cache). Living example: [`examples/progress`](examples/progress). Next: **M16 — Redis**.
 
 ## Quick start (dev)
 
@@ -29,9 +30,11 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 avalon version
-python grail version
+grail version          # same as: python grail version
 pytest
 ```
+
+Prefer `grail …` when Avalon is installed in the active environment. Use `python grail …` to run the repo/app root `grail` script explicitly.
 
 ## Create an application
 
@@ -41,7 +44,7 @@ cd blog
 python -m venv .venv && source .venv/bin/activate
 pip install -e /path/to/avalon   # or pip install avalon once published
 pip install -e .
-python grail serve
+grail serve
 ```
 
 ## Package layout
@@ -56,11 +59,18 @@ src/avalon/
   validation/   # FormRequest
   translation/  # __(), trans_choice(), Number, SetLocale
   installer/    # avalon new …
-  grail/        # python grail …
-  orm/          # Model, query builder, migrations
-  caliburn/     # later (M6)
-  auth/         # later (M7)
-grail           # root script → python grail …
+  grail/        # grail … / python grail …
+  orm/          # Articulate — Model, query builder, migrations
+  caliburn/     # Caliburn views
+  auth/         # guards, providers, Hash
+  console/      # Grail commands, prompts, schedule, fiddle
+  filesystem/   # Storage
+  queue/        # jobs / workers
+  mail/         # Mailable
+  notifications/
+  support/      # Collections, helpers
+  cache/        # Cache façade
+grail           # root script → same CLI as `grail`
 ```
 
 ## License

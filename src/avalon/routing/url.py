@@ -51,8 +51,8 @@ class UrlGenerator:
     def asset(self, path: str, *, absolute: bool = True) -> str:
         """Public URL for a file under ``public/`` (subpath-aware).
 
-        Bundlers (Vite, etc.) belong in starter kits; they emit into ``public/``
-        and apps keep calling ``asset(...)``.
+        Default apps ship Vite + Tailwind emitting into ``public/build/``.
+        Keep calling ``asset(...)`` for any file under ``public/``.
         """
         return self.to(path, absolute=absolute)
 

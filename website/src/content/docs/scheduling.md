@@ -5,7 +5,7 @@ description: Schedule DSL, cron expressions, overlap mutex, schedule:run and sch
 
 ## Defining schedules
 
-Put schedule definitions in `routes/console.py`. The HTTP kernel skips this file; `python grail schedule:run` (and `schedule:work`) load it.
+Put schedule definitions in `routes/console.py`. The HTTP kernel skips this file; `grail schedule:run` (and `schedule:work`) load it.
 
 ```python
 # routes/console.py
@@ -39,17 +39,17 @@ booted (`Cache.lock("schedule:…")`), otherwise a filesystem mutex under
 ## Running the schedule
 
 ```bash
-# Once (wire to system cron: * * * * * cd /path/to/app && python grail schedule:run)
-python grail schedule:run
+# Once (wire to system cron: * * * * * cd /path/to/app && grail schedule:run)
+grail schedule:run
 
 # Long-running ticker (dev / containers)
-python grail schedule:work --sleep=60
+grail schedule:work --sleep=60
 ```
 
 Due events print `Running: …`. Callbacks run in-process; command events invoke the console kernel (`inspire`, app commands, …). Queue-backed jobs wait on **M11**.
 
 ## Related
 
-- [Artisan Console](/console/)
+- [Grail Console](/console/)
 - [Cache](/cache/) — preferred overlap locks
 - [Error Handling](/errors/)

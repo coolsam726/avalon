@@ -7,7 +7,7 @@ description: Soft delete models, define query scopes, and listen for model lifec
 
 ### Local scopes
 
-Local scopes allow you to define common sets of query constraints for reuse. Name the method `scope_<name>`. The **query is the first argument** (like Laravel's `scopeXxx($query)`):
+Local scopes allow you to define common sets of query constraints for reuse. Name the method `scope_<name>`. The **query is the first argument**:
 
 ```python
 # app/models/post.py

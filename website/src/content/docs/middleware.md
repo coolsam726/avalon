@@ -5,7 +5,7 @@ description: Register and configure HTTP middleware in your Avalon application.
 
 Middleware provide a convenient mechanism for inspecting and filtering HTTP requests entering your application. For example, Avalon includes middleware for setting the request locale. You may also write your own.
 
-Like Laravel 11, Avalon registers middleware in **`bootstrap/app.py`**. Keep `config/http.py` for group shells and defaults; put your application's middleware wiring in the bootstrap configurator.
+Avalon registers middleware in **`bootstrap/app.py`**. Keep `config/http.py` for group shells and defaults; put your application's middleware wiring in the bootstrap configurator.
 
 ## Registering middleware
 
@@ -75,7 +75,7 @@ class DemoTagMiddleware:
 Generate a stub with:
 
 ```bash
-python grail make:middleware DemoTagMiddleware
+grail make:middleware DemoTagMiddleware
 ```
 
 Then alias it in `bootstrap/app.py` and attach it to a group or route.

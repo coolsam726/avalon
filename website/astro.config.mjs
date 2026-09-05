@@ -11,7 +11,7 @@ export default defineConfig({
 		starlight({
 			title: 'Avalon',
 			description:
-				'The elegant Python web framework for artisans who love Laravel-shaped apps.',
+				'The elegant Python web framework with Articulate, Caliburn, and the Grail CLI.',
 			logo: {
 				src: './src/assets/avalon-banner.svg',
 				alt: 'Avalon',
@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					label: 'Digging Deeper',
 					collapsed: true,
 					items: [
-						{ label: 'Artisan Console', slug: 'console' },
+						{ label: 'Grail Console', slug: 'console' },
 						{ label: 'Prompts', slug: 'prompts' },
 						{ label: 'Task Scheduling', slug: 'scheduling' },
 						{ label: 'File Storage', slug: 'filesystem' },

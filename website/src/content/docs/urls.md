@@ -51,7 +51,7 @@ return redirect("/progress")  # path resolved through url(..., absolute=False)
 
 ## Named routes
 
-Per-route `name=` is accepted on the router today. A Laravel-style `route("name", …)` helper is **planned** (Later / router DX). Until then, prefer `url("/explicit/path")`.
+Per-route `name=` is accepted on the router today. A named-route `route("name", …)` helper is **planned** (Later / router DX). Until then, prefer `url("/explicit/path")`.
 
 ## In Caliburn
 

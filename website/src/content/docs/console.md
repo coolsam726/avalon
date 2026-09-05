@@ -1,20 +1,28 @@
 ---
-title: Artisan Console
+title: Grail Console
 description: Grail commands, Command classes, discovery, and the Fiddle REPL.
 ---
 
 ## Grail
 
-Every Avalon app ships a root `grail` script — the in-application CLI (Laravel Artisan class):
+Every Avalon application ships **Grail** — the in-app CLI. With your virtualenv active and Avalon installed, run commands as `grail …`. You can also invoke the root `grail` script with `python grail …`.
 
 ```bash
-python grail list
-python grail make:command SendDigest
-python grail inspire
-python grail fiddle
+grail list
+grail make:command SendDigest
+grail inspire
+grail fiddle
 ```
 
-Framework Typer commands (`serve`, `migrate`, `make:*`, …) live on the same surface as discovered `Command` subclasses.
+`fiddle` is Avalon’s interactive REPL. Familiar aliases work the same way:
+
+```bash
+grail fiddle
+grail tinker
+grail repl
+```
+
+Framework commands (`serve`, `migrate`, `make:*`, …) live on the same surface as discovered app `Command` subclasses.
 
 ## Writing commands
 
@@ -32,7 +40,7 @@ class SendDigest(Command):
         return 0
 ```
 
-Generate a stub with `python grail make:command SendDigest`.
+Generate a stub with `grail make:command SendDigest`.
 
 ### Signature tokens
 
@@ -47,7 +55,7 @@ Generate a stub with `python grail make:command SendDigest`.
 
 ### Output helpers
 
-`line`, `info`, `comment`, `warn`, `error`, `success`, `table`, `confirm` — Laravel-shaped wrappers over Typer.
+`line`, `info`, `comment`, `warn`, `error`, `success`, `table`, `confirm` — typed output helpers on `Command`.
 
 ## Discovery
 
@@ -57,13 +65,13 @@ Generate a stub with `python grail make:command SendDigest`.
 2. App package `app.console.commands`
 3. Files under `app/console/commands/*.py`
 
-Register extras via the container-bound `ConsoleKernel` if needed. Failed command runs report through the M8 `Handler` before exiting.
+Register extras via the container-bound `ConsoleKernel` if needed. Failed command runs report through the exception `Handler` before exiting.
 
 ## Fiddle REPL
 
-`python grail fiddle` boots the application and opens a Tinker-class shell.
+`grail fiddle` (or `tinker` / `repl`) boots the application and opens an interactive shell with helpers and models available.
 
-Avalon's ORM is **async**. Fiddle auto-resolves coroutine expression results, so these both work:
+Articulate is **async**. Fiddle auto-resolves coroutine expression results, so these both work:
 
 ```python
 User.all()
@@ -82,7 +90,7 @@ serialize(users)     # plain Python dict/list
 
 ## `dump()` / `dd()`
 
-Laravel-shaped debug helpers live on the package root:
+Debug helpers live on the package root:
 
 ```python
 from avalon import dump, dd
@@ -118,7 +126,7 @@ Preloaded names typically include `app`, `config`, `Route`, `url`, `DB`, `Model`
 
 ## Prompts
 
-Interactive UI lives in [`avalon.console.prompts`](/prompts/) — Laravel Prompts-shaped `text`, `select`, `confirm`, `spin`, `progress`, and Command helpers `ask` / `choice` / `secret` / `anticipate`.
+Interactive UI lives in [`avalon.console.prompts`](/prompts/) — `text`, `select`, `confirm`, `spin`, `progress`, and Command helpers `ask` / `choice` / `secret` / `anticipate`.
 
 ## Related
 

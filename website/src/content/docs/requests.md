@@ -3,7 +3,7 @@ title: Requests
 description: Inspect the incoming HTTP request with Avalon's Request bag.
 ---
 
-Avalon's `Request` is a Laravel-shaped façade over the ASGI request. Application code should type-hint `avalon.http.Request`, not Starlette/FastAPI request types.
+Avalon's `Request` is the application façade over the ASGI request. Application code should type-hint `avalon.http.Request`, not Starlette/FastAPI request types.
 
 ## Accessing the request
 

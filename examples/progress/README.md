@@ -1,6 +1,6 @@
 # Progress — Avalon living example
 
-Progress is created with the **official installer**, then demos are layered with **`python grail make:*`**.
+Progress is created with the **official installer**, then demos are layered with **`grail make:*`**.
 If something is missing here that a fresh scaffold has, that is a scaffold gap — fix the installer, then re-align Progress.
 
 Canonical plan: [`../../docs/PLAN.md`](../../docs/PLAN.md) · docs: [`../../website/`](../../website/) (`make docs`) · structure: [`structure`](../../website/src/content/docs/structure.md) · middleware: [`middleware`](../../website/src/content/docs/middleware.md)
@@ -15,21 +15,21 @@ cd examples/progress
 pip install -e ../.. && pip install -e .
 
 # Generators (same as any app)
-python grail make:middleware DemoTagMiddleware
-python grail make:request StoreItemRequest
-python grail make:controller DemoController
-python grail make:controller ProgressController
-python grail make:controller LocaleController
-python grail make:controller OrmTourController
-python grail make:controller PostController
-python grail make:controller UserController
-python grail make:model User
-python grail make:model Post
-python grail make:model Role
-python grail make:model Comment
-python grail make:migration create_demo_tables
-python grail make:seeder DemoSeeder
-python grail make:lang sw
+grail make:middleware DemoTagMiddleware
+grail make:request StoreItemRequest
+grail make:controller DemoController
+grail make:controller ProgressController
+grail make:controller LocaleController
+grail make:controller OrmTourController
+grail make:controller PostController
+grail make:controller UserController
+grail make:model User
+grail make:model Post
+grail make:model Role
+grail make:model Comment
+grail make:migration create_demo_tables
+grail make:seeder DemoSeeder
+grail make:lang sw
 
 # Then wire routes, bootstrap middleware, demo bodies, migration `up`/`down`,
 # and DatabaseSeeder.call([DemoSeeder]) (this tree already has those filled in).
@@ -43,8 +43,8 @@ source .venv/bin/activate
 pip install -e .
 cd examples/progress
 pip install -e .
-python grail migrate --seed
-python grail serve
+grail migrate --seed
+grail serve
 ```
 
 SQLite file: `database/database.sqlite` (gitignored). Same layout as `avalon new`.
@@ -109,7 +109,7 @@ curl -s "$BASE/api/echo/7?q=api" | python -m json.tool
 curl -s -X POST "$BASE/api/items" -H 'Content-Type: application/json' \
   -d '{"name":"avalon","count":"3","flag":"true"}' | python -m json.tool
 
-# 422 with Laravel-shaped messages; attributes() renames count -> "item count"
+# 422 with Avalon validation messages; attributes() renames count -> "item count"
 curl -s -X POST "$BASE/api/items" -H 'Content-Type: application/json' \
   -d '{"name":"a","count":0,"tags":"nope"}' | python -m json.tool
 
@@ -146,7 +146,7 @@ curl -s "$BASE/api/posts/1/comments" | python -m json.tool
 
 | Milestone | Visible here |
 | --- | --- |
-| **M0** | `avalon new` + `python grail serve` |
+| **M0** | `avalon new` + `grail serve` |
 | **M1** | `Application.configure().create()`, `config()`, providers, `.env` |
 | **M2** | Route DSL, groups, middleware (bootstrap fluent), verbs, Request bag, DI, HttpException |
 | **M3** | `StoreItemRequest`, 422/403, `url()` + ASGI mount for `APP_BASE_PATH` |
@@ -155,11 +155,11 @@ curl -s "$BASE/api/posts/1/comments" | python -m json.tool
 | **M6** | Caliburn views — layouts, components, showcase, `view()` |
 | **M7** | Session + CSRF, `/login`, Hash, `/api/me` bearer auth |
 | **M8** | Handler + `/boom` · `/api/explode`, `errors:publish`, logging |
-| **M9** | `progress:hello`, `progress:prompts`, `routes/console.py`, `grail schedule:run`, `grail fiddle` |
+| **M9** | `progress:hello`, `progress:prompts`, `routes/console.py`, `grail schedule:run`, `grail fiddle` (aliases: `tinker`, `repl`) |
 | **M10** | `Storage` / `storage:link`, `config/filesystems.py` |
-| **M11–M13** | `python grail progress:demo` — queue job, WelcomeMail, reset/verify notifications |
-| **M14** | `python grail progress:helpers` — Arr / Str / Number |
-| **M15** | `python grail progress:cache` — Cache façade, remember, locks |
+| **M11–M13** | `grail progress:demo` — queue job, WelcomeMail, reset/verify notifications |
+| **M14** | `grail progress:helpers` — Arr / Str / Number |
+| **M15** | `grail progress:cache` — Cache façade, remember, locks |
 | **M16–M29** | Roadmap on `/progress` (Redis → packages); see `docs/PLAN.md` |
 
 ## Growing with Avalon
@@ -168,19 +168,21 @@ M0–M15 are closed. Next is **M16 — Redis**. The board lists the full **M0–
 ## CLI
 
 ```bash
-python grail version
-python grail list
-python grail progress:hello Avalon
-python grail progress:prompts
-python grail progress:demo
-python grail progress:helpers
-python grail progress:cache
-python grail storage:link
-python grail schedule:run
-python grail fiddle
-python grail queue:work
-python grail migrate
-python grail serve
+grail version
+grail list
+grail progress:hello Avalon
+grail progress:prompts
+grail progress:demo
+grail progress:helpers
+grail progress:cache
+grail storage:link
+grail schedule:run
+grail fiddle          # aliases: tinker, repl
+grail queue:work
+grail migrate
+grail serve
 ```
+
+Prefer `grail …` with the venv active. Use `python grail …` only when you want to invoke the root `grail` script explicitly.
 
 Create more apps with `avalon new` — not with Grail.

@@ -24,7 +24,7 @@ from avalon.caliburn import view
 
 
 async def index(self):
-    return view("welcome", {"name": "Artisan"})
+    return view("welcome", {"name": "Ada"})
 
 
 async def data(self):

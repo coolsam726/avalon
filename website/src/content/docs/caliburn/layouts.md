@@ -5,7 +5,7 @@ description: "Extend layouts with @extends, @section, @yield, and @parent."
 
 # Layouts & Inheritance
 
-Caliburn layouts mirror Blade.
+Caliburn layouts use `@extends`, `@section`, and `@yield`.
 
 ## Yielding sections
 

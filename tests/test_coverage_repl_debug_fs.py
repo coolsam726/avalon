@@ -401,8 +401,9 @@ def test_schedule_run_work_and_fiddle(tmp_path: Path, monkeypatch: pytest.Monkey
         patch("avalon.console.repl.start_fiddle", return_value=0),
     ):
         from_cwd.return_value = MagicMock(app=object())
-        result = runner.invoke(grail_cli.app, ["fiddle"])
-    assert result.exit_code == 0
+        for alias in ("fiddle", "tinker", "repl"):
+            result = runner.invoke(grail_cli.app, [alias])
+            assert result.exit_code == 0, alias
 
     with patch("avalon.console.kernel.ConsoleKernel.from_cwd", side_effect=RuntimeError("x")):
         grail_cli._register_discovered_commands()

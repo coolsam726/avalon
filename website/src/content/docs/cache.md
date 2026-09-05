@@ -1,58 +1,41 @@
 ---
 title: Cache
-description: Cache façade, array/file/database stores, atomic locks, and tags.
+description: Cache stores, remembering values, atomic locks, and tags.
 ---
 
-## Overview
+## Introduction
+
+Avalon’s cache layer stores temporary data behind a single façade. Use it to
+memoize expensive work, share short-lived state between requests, and take
+cross-process locks for scheduled tasks or jobs.
 
 ```python
 from avalon.cache import Cache, cache
 
 Cache.put("users:1", {"name": "Ada"}, 60)
-Cache.get("users:1")
-Cache.get("missing", "default")
-Cache.get("missing", lambda: expensive_default())
-
-Cache.has("users:1")
-Cache.missing("users:1")
-
-Cache.add("users:1", {"name": "Ada"}, 60)  # only if absent (atomic)
-Cache.pull("users:1")                      # get + forget
-
-Cache.many(["users:1", "users:2"])
-Cache.put_many({"a": 1, "b": 2}, 60)
-
-Cache.remember("answer", 60, lambda: expensive())
-Cache.remember_forever("config", lambda: load_config())
-Cache.forever("config", payload)
-Cache.touch("users:1", 120)                # refresh TTL, keep value
-
-Cache.increment("hits")
-Cache.increment("hits", 5)
-Cache.decrement("hits")
-
-Cache.forget("users:1")
-Cache.flush()
-
-cache("users:1")          # get
-cache({"k": "v"}, 60)     # put many
-cache()                   # default store repository
-```
-
-TTL may be seconds, a `timedelta`, or an aware/naive `datetime`.
-
-Named stores:
-
-```python
-Cache.store("file").put("logo", svg, 3600)
-Cache.store("database").get("logo")
+user = Cache.get("users:1")
+Cache.remember("stats:home", 120, lambda: compute_stats())
 ```
 
 ## Configuration
 
-Scaffold / progress ship `config/cache.py`:
+Scaffolded apps ship `config/cache.py`. The default store and key prefix come
+from the environment:
+
+### Environment variables
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `CACHE_STORE` | `file` | Name of the default store (`array`, `file`, `database`, `null`, …) |
+| `CACHE_PREFIX` | `avalon_cache_` | Prefix applied to every cache key |
+
+```env
+CACHE_STORE=file
+CACHE_PREFIX=avalon_cache_
+```
 
 ```python
+# config/cache.py
 from avalon.config import env
 
 config = {
@@ -75,19 +58,90 @@ config = {
 }
 ```
 
-| Store | Role |
-|---|---|
-| **array** | Process-local (tests / default in progress) |
-| **file** | Disk under `storage/framework/cache/data` |
-| **database** | `cache` table via Articulate |
-| **null** | Accepts writes; never returns them |
+### Choosing a store
 
-Redis arrives with **M16**.
+| Store | When to use it |
+| --- | --- |
+| **array** | Process-local only — ideal for tests and demos (progress defaults here) |
+| **file** | Single-server apps; data under `storage/framework/cache/data` |
+| **database** | Shared cache across app processes via Articulate (`cache` + `cache_locks` tables) |
+| **null** | Disable caching without removing call sites (writes accepted, reads miss) |
 
-`add` is atomic on every store (process lock / `flock` / `INSERT OR IGNORE`).
-Database `increment` / `decrement` run inside a transaction.
+A Redis driver arrives with milestone **M16**. Until then, prefer `file` or
+`database` in multi-process deployments.
 
-### Database tables
+Switch stores per call:
+
+```python
+Cache.store("file").put("logo", svg, 3600)
+Cache.store("database").get("logo")
+```
+
+## Retrieving items
+
+```python
+Cache.get("users:1")
+Cache.get("missing", "default")
+Cache.get("missing", lambda: expensive_default())
+
+Cache.has("users:1")
+Cache.missing("users:1")
+
+Cache.many(["users:1", "users:2"])
+Cache.pull("users:1")   # get + forget
+```
+
+### Storing items
+
+```python
+Cache.put("users:1", {"name": "Ada"}, 60)
+Cache.put_many({"a": 1, "b": 2}, 60)
+Cache.forever("config", payload)
+
+Cache.add("users:1", {"name": "Ada"}, 60)  # only if absent (atomic)
+Cache.touch("users:1", 120)                # refresh TTL, keep value
+```
+
+TTL may be seconds, a `timedelta`, or an aware/naive `datetime`.
+
+### Remembering values
+
+```python
+value = Cache.remember("answer", 60, lambda: expensive())
+value = Cache.remember_forever("config", lambda: load_config())
+```
+
+`remember` stores the callback result on a miss and returns it on hits.
+
+### The `cache()` helper
+
+```python
+from avalon.cache import cache
+
+cache("users:1")          # get
+cache({"k": "v"}, 60)     # put many
+repo = cache()            # default store repository
+```
+
+### Incrementing / decrementing
+
+```python
+Cache.increment("hits")
+Cache.increment("hits", 5)
+Cache.decrement("hits")
+```
+
+Database `increment` / `decrement` run inside a transaction. `add` is atomic on
+every store (process lock / `flock` / `INSERT OR IGNORE`).
+
+### Removing items
+
+```python
+Cache.forget("users:1")
+Cache.flush()
+```
+
+## Database tables
 
 The database driver ensures two tables on first use:
 
@@ -99,9 +153,12 @@ key VARCHAR(255) PRIMARY KEY, value BLOB, expiration INTEGER NULL
 key VARCHAR(255) PRIMARY KEY, owner VARCHAR(255), expiration INTEGER NOT NULL
 ```
 
-You can also call `ensure_cache_table()` / `ensure_cache_table_sync()` from `avalon.cache` in migrations or bootstraps.
+You can also call `ensure_cache_table()` / `ensure_cache_table_sync()` from
+`avalon.cache` in migrations or bootstraps.
 
-## Locks
+## Atomic locks
+
+Locks coordinate work across processes:
 
 ```python
 lock = Cache.lock("invoices:settle", seconds=10)
@@ -128,18 +185,19 @@ Cache.without_overlapping("report", lambda: build_report())
 ```
 
 | Store | Lock backend |
-|---|---|
+| --- | --- |
 | array | Atomic `add` under a process lock |
 | file | `.locks/` + `fcntl.flock` |
-| database | `cache_locks` table (`DatabaseLock`) |
+| database | `cache_locks` table |
 
 Scheduled `without_overlapping()` prefers cache locks when Cache is booted,
-falling back to the filesystem mutex — see [Task Scheduling](/scheduling/).
+falling back to a filesystem mutex — see [Task Scheduling](/scheduling/).
 
-## Tags
+## Cache tags
 
-Tags work on the **array** store (and **Redis in M16**). File and database
-stores raise `RuntimeError` — same rule as Laravel.
+Tags let you invalidate related keys as a group. They work on the **array**
+store today (Redis tags arrive with M16). File and database stores raise
+`RuntimeError` if you call `tags()` — Avalon is honest about driver support.
 
 ```python
 Cache.tags("users", "authors").put("ada", user, 60)

@@ -46,7 +46,7 @@ Push fragments from a child view; flush them in the layout (usually **after**
 
 ## Debugging
 
-Laravel-shaped dump helpers for views:
+Dump helpers for views:
 
 ```html
 <!-- resources/views/debug.cal.html -->
@@ -60,7 +60,7 @@ Laravel-shaped dump helpers for views:
 | `@dump(...)` | Embeds a styled HTML dump card in the page; rendering continues |
 | `@dd(...)` | Halts with Avalon's dump page (same as `from avalon import dd`) |
 
-Also available in Python as `from avalon import dump, dd`. See [Artisan Console](/console/#dump--dd).
+Also available in Python as `from avalon import dump, dd`. See [Grail Console](/console/#dump--dd).
 
 ## Custom directives
 

@@ -46,7 +46,7 @@ oracle = ["oracledb>=2.0"]
 db = ["asyncpg>=0.29", "aiomysql>=0.2", "aioodbc>=0.5.0", "oracledb>=2.0"]
 argon2 = ["argon2-cffi>=23.0"]
 caliburn = []
-# Tinker-class REPL (`python grail fiddle`) — colors, completion, pretty repr.
+# Tinker-class REPL (`grail fiddle` / `tinker` / `repl`) — colors, completion, pretty repr.
 fiddle = ["ipython>=8.18"]
 s3 = ["boto3>=1.34"]
 

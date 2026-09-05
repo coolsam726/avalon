@@ -1,9 +1,9 @@
 ---
 title: Avalon
-description: An elegant Python web framework for building expressive, Laravel-shaped applications.
+description: An elegant Python web framework for expressive, async applications.
 template: splash
 hero:
-  tagline: Build beautiful web applications with a familiar structure, a powerful ORM, and an artisan CLI — in Python.
+  tagline: Build beautiful web applications with a familiar structure, a powerful ORM, and the Grail CLI — in Python.
   actions:
     - text: Get started
       link: /installation/
@@ -16,9 +16,9 @@ hero:
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-Avalon is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable, creative experience. Avalon attempts to take the pain out of development by easing common tasks used in many web projects — routing, validation, the database layer, and more — while keeping the Laravel mental model you already know.
+Avalon is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable, creative experience. Avalon eases common tasks used in many web projects — routing, validation, the database layer, views, queues, and more — with first-class `async`/`await` for ASGI.
 
-Create apps with `avalon new`. Drive them with `python grail …`. Write controllers, models, and migrations the way you would in Laravel — with first-class `async`/`await` for ASGI.
+Create apps with `avalon new`. Drive them with `grail …`. Write controllers, Articulate models, Caliburn views, and migrations in a layout that stays navigable as the app grows.
 
 ## Why Avalon?
 
@@ -30,7 +30,7 @@ Create apps with `avalon new`. Drive them with `python grail …`. Write control
 		Active Record models, a fluent query builder, relationships, migrations, and seeders — all async.
 	</Card>
 	<Card title="Grail CLI" icon="rocket">
-		Generate controllers, models, and migrations. Serve your app. Migrate and seed your database.
+		Generate controllers, models, and migrations. Serve your app. Open Fiddle. Migrate and seed your database.
 	</Card>
 	<Card title="Middleware & HTTP" icon="setting">
 		Register middleware in `bootstrap/app.py`, define routes in `routes/web.py` and `routes/api.py`, and keep FastAPI out of your application code.

@@ -3,7 +3,7 @@ title: Routing
 description: Define web and API routes with Avalon's Route DSL.
 ---
 
-Routes map HTTP verbs and URIs to controller actions. Avalon keeps Laravel's split between **browser** and **API** surfaces: `routes/web.py` returns HTML; `routes/api.py` returns JSON.
+Routes map HTTP verbs and URIs to controller actions. Avalon splits **browser** and **API** surfaces: `routes/web.py` returns HTML; `routes/api.py` returns JSON.
 
 Register routes with the `Route` façade from `avalon.routing`. Controllers are resolved from the container — never import FastAPI in application code.
 

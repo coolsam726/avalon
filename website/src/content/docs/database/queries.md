@@ -91,7 +91,7 @@ await User.query().upsert(
 ```
 
 :::caution
-Columns listed in `unique_by` must have a UNIQUE index or constraint — the same requirement as Laravel. An empty `update` list means “do nothing on conflict” (SQLite/PostgreSQL) or a no-op assignment (MySQL).
+Columns listed in `unique_by` must have a UNIQUE index or constraint. An empty `update` list means “do nothing on conflict” (SQLite/PostgreSQL) or a no-op assignment (MySQL).
 :::
 
 

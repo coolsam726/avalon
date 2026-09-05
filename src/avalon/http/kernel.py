@@ -119,7 +119,7 @@ class HttpKernel:
             self._register_route(asgi, route)
 
         # Dev/DX: files under public/{css,js,images,fonts,build}/ map to /{dir}/…
-        # Production may still front this with a CDN/proxy; starter kits own bundlers.
+        # Production may still front this with a CDN/proxy; Vite emits into public/build.
         public_dir = Path(self.app.base_path) / "public"
         if public_dir.is_dir():
             from fastapi.staticfiles import StaticFiles

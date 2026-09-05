@@ -1,6 +1,6 @@
 ---
 title: Components & Slots
-description: "Blade-style components, named slots, attribute bags, @props, @aware, and class-based components."
+description: "Anonymous and class-based components, named slots, attribute bags, @props, and @aware."
 ---
 
 # Components & Slots
@@ -20,8 +20,8 @@ Place templates under `resources/views/components/`:
 Scaffold with:
 
 ```bash
-python grail make:component alert
-python grail make:component forms/input --class
+grail make:component alert
+grail make:component forms/input --class
 ```
 
 ### Class tag syntax
@@ -31,7 +31,7 @@ python grail make:component forms/input --class
 <x-alert type="success">Saved.</x-alert>
 ```
 
-Dynamic attributes use Blade-shaped bindings:
+Dynamic attributes use colon bindings:
 
 ```html
 <!-- resources/views/welcome.cal.html -->

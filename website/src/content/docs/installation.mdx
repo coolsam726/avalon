@@ -7,20 +7,30 @@ import { Steps } from '@astrojs/starlight/components';
 
 ## Meet Avalon
 
-Avalon is a Python web framework inspired by Laravel. You create applications with `avalon new`, then use **Grail** — Avalon's in-app CLI — much like `artisan`:
+Avalon is a Python web framework with expressive structure and first-class
+`async`/`await` for ASGI. Create applications with `avalon new`, then drive them
+with **Grail** — Avalon’s in-app CLI:
 
 ```bash
 avalon new blog
 cd blog
-python grail serve
+grail serve
 ```
 
-Templates, routing, validation, localization, and the ORM all live behind the `avalon.*` package. You write application code; Avalon boots the container, compiles your routes, and serves them over ASGI.
+Templates, routing, validation, localization, and the ORM all live behind the
+`avalon.*` package. You write application code; Avalon boots the container,
+compiles your routes, and serves them over ASGI.
+
+:::note
+Avalon is inspired by Laravel’s application shape. The public APIs, CLI, ORM,
+and view engine are Avalon’s own — **Grail**, **Articulate**, and **Caliburn**.
+:::
 
 ## Requirements
 
 - Python **3.11** or higher
 - `pip` and a virtual environment
+- Node.js **18+** (optional but recommended) for the default Vite + Tailwind toolchain
 
 ## Creating an Avalon project
 
@@ -50,24 +60,32 @@ Templates, routing, validation, localization, and the ORM all live behind the `a
    pip install avalon               # or -e /path/to/avalon during local development
    ```
 
-4. **Start the development server:**
+4. **Install frontend dependencies (Vite + Tailwind):**
 
    ```bash
-   python grail serve
+   npm install
    ```
 
-   Visit the URL Grail prints (typically `http://127.0.0.1:8000`).
+5. **Start the development server:**
+
+   ```bash
+   grail serve
+   ```
+
+   Visit the URL Grail prints (typically `http://127.0.0.1:3000`). In another
+   terminal, run `npm run dev` while iterating on CSS/JS.
 
 </Steps>
 
 :::tip[Grail]
-Every Avalon app ships with a root `grail` script. Prefer `python grail …` so the same interpreter as your venv is used.
+With the virtualenv active, Avalon installs a `grail` console script — run
+`grail serve`, `grail migrate`, `grail fiddle`, and so on. The root `grail`
+file still works as `python grail …` if you prefer that form.
 :::
-
 
 ## Directory structure at a glance
 
-A fresh application looks familiar if you have used Laravel:
+A fresh application looks like this:
 
 ```text
 blog/
@@ -79,12 +97,16 @@ blog/
   config/
   database/migrations/
   database/seeders/
+  resources/css/
+  resources/js/
   routes/web.py
   routes/api.py
+  package.json
+  vite.config.js
   grail
 ```
 
-Read more in [Directory Structure](/structure/).
+Read more in [Directory Structure](/structure/) and [Asset Bundling](/asset-bundling/).
 
 ## Database drivers
 
@@ -105,3 +127,4 @@ Configure connections in `config/database.py` — see [Database: Getting Started
 - [Directory Structure](/structure/)
 - [Middleware](/middleware/)
 - [Articulate](/articulate/)
+- [Grail Console](/console/)

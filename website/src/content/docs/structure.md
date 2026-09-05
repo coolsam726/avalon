@@ -20,11 +20,11 @@ Avalon uses **PascalCase** for class names and **snake_case** for Python package
 | Module files | snake_case | `post.py`, `post_controller.py` |
 | Imports | dotted snake_case | `from app.models.post import Post` |
 
-Generators follow the same rules. `python grail make:model Post` writes `app/models/post.py` containing `class Post`. Nested namespaces snake-case as well: `Admin/UserController` → `app/http/controllers/admin/user_controller.py`.
+Generators follow the same rules. `grail make:model Post` writes `app/models/post.py` containing `class Post`. Nested namespaces snake-case as well: `Admin/UserController` → `app/http/controllers/admin/user_controller.py`.
 
 ### The `bootstrap` directory
 
-Contains `app.py`, where you configure the application and register middleware — similar to Laravel 11's bootstrap file. See [Middleware](/middleware/).
+Contains `app.py`, where you configure the application and register middleware. See [Middleware](/middleware/).
 
 ### The `config` directory
 
@@ -44,7 +44,7 @@ Route definitions for your application. By convention:
 
 ### The `app/console` directory
 
-Console `Command` classes (`python grail make:command …`). See [Artisan Console](/console/) and [Task Scheduling](/scheduling/).
+Console `Command` classes (`grail make:command …`). See [Grail Console](/console/) and [Task Scheduling](/scheduling/).
 
 ### The `lang` directory
 
@@ -55,14 +55,13 @@ Translation catalogs for localization (`lang/en/…`, `lang/en.json`, and so on)
 The entry point for Avalon's command-line interface. Generate code, run migrations, schedule work, and open Fiddle:
 
 ```bash
-python grail make:controller PostController
-python grail migrate
-python grail schedule:run
-python grail fiddle
-python grail serve
+grail make:controller PostController
+grail migrate
+grail schedule:run
+grail fiddle
+grail serve
 ```
 
 :::note
-Model meta such as `fillable` and `casts` stay as snake_case class attributes — that matches Laravel's attribute names and keeps generated models readable.
+Model meta such as `fillable` and `casts` stay as snake_case class attributes so generated models stay readable and consistent with Articulate conventions.
 :::
-

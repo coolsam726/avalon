@@ -1,4 +1,4 @@
-"""Avalon — Laravel-inspired Python web framework."""
+"""Avalon — Python web framework (Articulate, Caliburn, Grail)."""
 
 from __future__ import annotations
 
